@@ -316,7 +316,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             streamStatusText.textContent = `Camera Live (${camName}) ✓`;
             activeAppTitle.textContent = `Real-Time AI Camera Protection (${camName})`;
             btnStartRealScreen.classList.remove("active");
-            btnStartRealScreen.querySelector("span").textContent = "Scan My WhatsApp / Screen";
+            btnStartRealScreen.querySelector("span").textContent = "Scan My Screen";
             if (btnReleaseCam) {
                 btnReleaseCam.style.opacity = "1";
                 btnReleaseCam.querySelector("span").textContent = "Free Camera for WhatsApp Call";
