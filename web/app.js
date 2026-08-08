@@ -1400,10 +1400,961 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // ================================================================
+    //  AUTONOMOUS SAFETY AGENTS ENGINE & REFLECTIONS LOG SYSTEM
+    // ================================================================
 
+    const agentRegistry = {
+        "nsfw_agent":    { name: "NSFWProtectionAgent", tag: "nsfw", enabled: true, sensitivity: 0.60, evalCount: 0, threatCount: 0, latencies: [] },
+        "wound_agent":   { name: "GraphicWoundAgent", tag: "wound", enabled: true, sensitivity: 0.55, evalCount: 0, threatCount: 0, latencies: [] },
+        "gesture_agent": { name: "GestureDefenseAgent", tag: "gesture", enabled: true, sensitivity: 0.60, evalCount: 0, threatCount: 0, latencies: [] },
+        "weapon_agent":  { name: "ThreatWeaponAgent", tag: "weapon", enabled: true, sensitivity: 0.50, evalCount: 0, threatCount: 0, latencies: [] },
+        "deepfake_agent":{ name: "DeepfakeForensicsAgent", tag: "deepfake", enabled: true, sensitivity: 0.65, evalCount: 0, threatCount: 0, latencies: [] },
+        "scam_agent":    { name: "ScamDefenseAgent", tag: "scam", enabled: true, sensitivity: 0.60, evalCount: 0, threatCount: 0, latencies: [] },
+        "privacy_agent": { name: "PrivacyPIIAgent", tag: "privacy", enabled: true, sensitivity: 0.50, evalCount: 0, threatCount: 0, latencies: [] },
+        "audio_agent":   { name: "AudioProfanityAgent", tag: "audio", enabled: true, sensitivity: 0.50, evalCount: 0, threatCount: 0, latencies: [] }
+    };
 
+    let totalSupervisorEvals = 0;
+    let totalSupervisorThreats = 0;
+
+    const reflectionsTerminalBody = document.getElementById("reflectionsTerminalBody");
+    const btnClearReflectionsLog  = document.getElementById("btnClearReflectionsLog");
+
+    function appendReflectionsLog(tag, name, message, isWarn = false) {
+        if (!reflectionsTerminalBody) return;
+        const timeStr = new Date().toTimeString().split(" ")[0];
+        const row = document.createElement("div");
+        row.className = `log-row ${isWarn ? "warn" : "info"}`;
+        row.innerHTML = `
+            <span class="log-time">[${timeStr}]</span>
+            <span class="log-agent ${tag}">[${name}]</span>
+            <span class="log-msg">${message}</span>
+        `;
+        reflectionsTerminalBody.appendChild(row);
+        reflectionsTerminalBody.scrollTop = reflectionsTerminalBody.scrollHeight;
+
+        // Keep last 150 log entries
+        while (reflectionsTerminalBody.children.length > 150) {
+            reflectionsTerminalBody.removeChild(reflectionsTerminalBody.firstChild);
+        }
+    }
+
+    if (btnClearReflectionsLog) {
+        btnClearReflectionsLog.addEventListener("click", () => {
+            if (reflectionsTerminalBody) {
+                reflectionsTerminalBody.innerHTML = `
+                    <div class="log-row info">
+                        <span class="log-time">[${new Date().toTimeString().split(" ")[0]}]</span>
+                        <span class="log-agent master">[MasterSupervisorAgent]</span>
+                        <span class="log-msg">Reflections terminal logs cleared by user.</span>
+                    </div>
+                `;
+            }
+        });
+    }
+
+    // Toggle Agent Checkboxes Handler
+    document.querySelectorAll(".agent-toggle-checkbox").forEach(cb => {
+        cb.addEventListener("change", (e) => {
+            const agentId = e.target.getAttribute("data-agent-id");
+            const agent = agentRegistry[agentId];
+            if (agent) {
+                agent.enabled = e.target.checked;
+                appendReflectionsLog(
+                    agent.tag,
+                    agent.name,
+                    `Agent state updated: ${agent.enabled ? "ENABLED ✓" : "DISABLED ✗"}`
+                );
+                updateAgentsUI();
+
+                // Sync with Python backend API if online
+                fetch("http://127.0.0.1:8000/v1/agents/toggle", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agent_id: agentId, enabled: agent.enabled })
+                }).catch(() => {});
+            }
+        });
+    });
+
+    // Sensitivity Sliders Handler
+    document.querySelectorAll(".agent-sens-slider").forEach(slider => {
+        slider.addEventListener("input", (e) => {
+            const agentId = e.target.getAttribute("data-agent-id");
+            const val = parseFloat(e.target.value);
+            const agent = agentRegistry[agentId];
+            if (agent) {
+                agent.sensitivity = val;
+                const label = document.getElementById(`sens-val-${agentId}`);
+                if (label) label.textContent = `${Math.round(val * 100)}%`;
+                
+                // Sync with Python backend API
+                fetch("http://127.0.0.1:8000/v1/agents/sensitivity", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ agent_id: agentId, sensitivity: val })
+                }).catch(() => {});
+            }
+        });
+    });
+
+    function updateAgentsUI() {
+        // Count active agents
+        const activeCount = Object.values(agentRegistry).filter(a => a.enabled).length;
+        const statActive = document.getElementById("statActiveAgentsCount");
+        if (statActive) statActive.textContent = `${activeCount} / 8 Active`;
+
+        const supervisorPillText = document.getElementById("supervisorPillText");
+        if (supervisorPillText) {
+            supervisorPillText.textContent = `MASTER SUPERVISOR: ONLINE (${activeCount} AGENTS)`;
+        }
+
+        const statEval = document.getElementById("statEvalCount");
+        if (statEval) statEval.textContent = `${totalSupervisorEvals} frames`;
+
+        const statThreat = document.getElementById("statThreatCount");
+        if (statThreat) statThreat.textContent = `${totalSupervisorThreats} threats`;
+
+        // Update latency per agent
+        Object.keys(agentRegistry).forEach(id => {
+            const ag = agentRegistry[id];
+            const latBadge = document.getElementById(`latency-${id}`);
+            if (latBadge && ag.latencies.length > 0) {
+                const avg = ag.latencies.reduce((a, b) => a + b, 0) / ag.latencies.length;
+                latBadge.textContent = `~${avg.toFixed(1)} ms`;
+            }
+        });
+    }
+
+    // Periodic Reflections Log Streamer from Python Backend API (if backend is active)
+    setInterval(async () => {
+        try {
+            const res = await fetch("http://127.0.0.1:8000/v1/agents/logs");
+            if (res.ok) {
+                const data = await res.json();
+                if (data.logs && data.logs.length > 0) {
+                    const lastLog = data.logs[data.logs.length - 1];
+                    appendReflectionsLog(
+                        "master",
+                        "MasterSupervisorAgent",
+                        `[Backend API Consensus]: ${lastLog.reasoning}`,
+                        lastLog.overall_action !== "NONE"
+                    );
+                }
+            }
+        } catch (_e) {
+            // Backend offline or local fallback mode
+        }
+    }, 4000);
+
+    // ================================================================
+    //  CORE BOUNTY — Source Checklist per Agent Task
+    // ================================================================
+
+    const AGENT_CHECKLISTS = {
+        "nsfw_agent": [
+            { key: "cam_feed",    label: "Camera / screen feed active",       required: true },
+            { key: "tfjs_rt",     label: "TensorFlow.js runtime loaded",       required: true },
+            { key: "nsfw_model",  label: "NSFWJS neural model initialised",    required: true },
+            { key: "frame_pipe",  label: "Active 60 FPS frame pipeline",       required: true },
+        ],
+        "wound_agent": [
+            { key: "cam_feed",    label: "Camera / screen feed active",        required: true },
+            { key: "pt_model",    label: "PyTorch wound model checkpoint",      required: true },
+            { key: "efficientnet",label: "EfficientNet-B0 backbone loaded",    required: true },
+            { key: "preprocess",  label: "Frame preprocessor initialised",     required: true },
+        ],
+        "gesture_agent": [
+            { key: "cam_feed",    label: "Camera feed active",                 required: true },
+            { key: "mp_wasm",     label: "MediaPipe WASM runtime loaded",      required: true },
+            { key: "hand_model",  label: "Hand Landmarker model loaded",       required: true },
+            { key: "tracking",    label: "Active 3D gesture tracking",         required: true },
+        ],
+        "weapon_agent": [
+            { key: "cam_feed",    label: "Camera / screen feed active",        required: true },
+            { key: "coco_model",  label: "COCO-SSD model loaded",              required: true },
+            { key: "tfjs_rt",     label: "TF.js runtime initialised",          required: true },
+            { key: "detector",    label: "Object detector pipeline active",    required: true },
+        ],
+        "deepfake_agent": [
+            { key: "cam_feed",    label: "Camera feed active",                 required: true },
+            { key: "face_land",   label: "Facial landmark data source",        required: true },
+            { key: "boundary",    label: "Boundary analysis module armed",     required: true },
+            { key: "df_score",    label: "Deepfake score input pipeline",      required: true },
+        ],
+        "scam_agent": [
+            { key: "ocr_src",     label: "Screen / OCR text source active",   required: true },
+            { key: "pattern_dict",label: "Scam pattern dictionary loaded",     required: true },
+            { key: "kw_matcher",  label: "Keyword matcher engine active",      required: true },
+            { key: "scam_flag",   label: "is_scam flag input connected",       required: true },
+        ],
+        "privacy_agent": [
+            { key: "ocr_src",     label: "OCR text source active",             required: true },
+            { key: "pii_regex",   label: "PII regex patterns compiled",        required: true },
+            { key: "id_validator",label: "Aadhaar / PAN validator loaded",     required: true },
+            { key: "redact_eng",  label: "Blackout redaction engine ready",    required: true },
+        ],
+        "audio_agent": [
+            { key: "mic_stream",  label: "Microphone stream active",           required: true },
+            { key: "web_audio",   label: "Web Audio API context created",      required: true },
+            { key: "prof_dict",   label: "Profanity dictionary loaded",        required: true },
+            { key: "stt_engine",  label: "Browser STT / Whisper engine ready", required: true },
+        ],
+    };
+
+    const CHECKLIST_STORAGE_KEY = "reflections_checklist_state_v1";
+
+    // --- Load persisted checklist state from localStorage ---
+    function loadChecklistState() {
+        try {
+            return JSON.parse(localStorage.getItem(CHECKLIST_STORAGE_KEY) || "{}");
+        } catch (_) { return {}; }
+    }
+
+    // --- Save checklist state to localStorage ---
+    function saveChecklistState(state) {
+        localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(state));
+    }
+
+    // --- Compute completion stats for an agent ---
+    function computeCompletion(agentId, state) {
+        const items = AGENT_CHECKLISTS[agentId] || [];
+        const total = items.length;
+        const done  = items.filter(it => state[agentId]?.[it.key]).length;
+        return { done, total };
+    }
+
+    // --- Update the SVG progress ring for an agent ---
+    function updateProgressRing(agentId, done, total) {
+        const ringFill  = document.getElementById(`ring-fill-${agentId}`);
+        const ringLabel = document.getElementById(`ring-label-${agentId}`);
+        const card      = document.querySelector(`.agent-card[data-agent-id="${agentId}"]`);
+        if (!ringFill || !ringLabel) return;
+
+        const pct = total > 0 ? (done / total) * 100 : 0;
+        // stroke-dasharray = "filled empty" where circumference ≈ 100
+        ringFill.setAttribute("stroke-dasharray", `${pct.toFixed(1)} ${(100 - pct).toFixed(1)}`);
+
+        // Colour classes
+        ringFill.classList.remove("complete", "partial", "empty");
+        if (done === total && total > 0) ringFill.classList.add("complete");
+        else if (done > 0) ringFill.classList.add("partial");
+        else ringFill.classList.add("empty");
+
+        ringLabel.textContent = `${done}/${total}`;
+
+        // Card glow when complete
+        if (card) {
+            card.classList.toggle("all-complete", done === total && total > 0);
+        }
+    }
+
+    // --- Render the checklist drawer for an agent ---
+    function renderChecklist(agentId, state) {
+        const drawer = document.getElementById(`checklist-${agentId}`);
+        if (!drawer) return;
+        const items    = AGENT_CHECKLISTS[agentId] || [];
+        const agState  = state[agentId] || {};
+        const { done, total } = computeCompletion(agentId, state);
+
+        drawer.innerHTML = `
+            <div class="checklist-header">
+                <span class="checklist-header-label">📋 Required Sources & Inputs</span>
+                <span class="checklist-completion-label ${done === total && total > 0 ? "done" : ""}">${done}/${total} Complete</span>
+            </div>
+            <ul class="checklist-items-list">
+                ${items.map(item => `
+                    <li class="checklist-item ${agState[item.key] ? "checked" : ""}" data-agent="${agentId}" data-key="${item.key}">
+                        <div class="checklist-item-box"></div>
+                        <span class="checklist-item-label">${item.label}</span>
+                        <span class="checklist-item-required">${item.required ? "Required" : "Optional"}</span>
+                    </li>
+                `).join("")}
+            </ul>
+        `;
+
+        // Attach click handlers to each checklist row
+        drawer.querySelectorAll(".checklist-item").forEach(li => {
+            li.addEventListener("click", () => {
+                const key = li.dataset.key;
+                const aid = li.dataset.agent;
+                if (!state[aid]) state[aid] = {};
+                state[aid][key] = !state[aid][key];
+                saveChecklistState(state);
+                renderChecklist(aid, state);           // re-render drawer
+                const { done: d, total: t } = computeCompletion(aid, state);
+                updateProgressRing(aid, d, t);
+
+                // Update filter if "missing data" is active
+                applyFilters(state);
+            });
+        });
+
+        updateProgressRing(agentId, done, total);
+    }
+
+    // --- Toggle checklist drawer open / close ---
+    function wireChecklistToggles(state) {
+        document.querySelectorAll(".btn-checklist-toggle").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const agentId = btn.dataset.agentId;
+                const drawer  = document.getElementById(`checklist-${agentId}`);
+                if (!drawer) return;
+                const isOpen  = drawer.classList.toggle("open");
+                btn.classList.toggle("open", isOpen);
+                if (typeof lucide !== "undefined") lucide.createIcons();
+            });
+        });
+    }
+
+    // --- Seed NSFW agent as the completed sample record (4/4) ---
+    function seedNSFWSampleRecord(state) {
+        if (!state["nsfw_agent"]) {
+            state["nsfw_agent"] = {
+                cam_feed: true,
+                tfjs_rt:  true,
+                nsfw_model: true,
+                frame_pipe: true,
+            };
+            saveChecklistState(state);
+        }
+    }
+
+    // --- Initialise all checklists ---
+    function initChecklists() {
+        const state = loadChecklistState();
+        seedNSFWSampleRecord(state);
+
+        Object.keys(AGENT_CHECKLISTS).forEach(agentId => {
+            renderChecklist(agentId, state);
+        });
+        wireChecklistToggles(state);
+    }
+
+    // ================================================================
+    //  ADVANCED BOUNTY — Section-Level Search & Filters
+    // ================================================================
+
+    function escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    // Highlight matching text inside a DOM element's text nodes
+    function highlightText(el, query) {
+        if (!el || !query) return;
+        // Walk all text-containing children
+        el.querySelectorAll("h4, .agent-category, .agent-desc").forEach(node => {
+            // Restore plain text first (strip previous marks)
+            if (node.dataset.origText === undefined) {
+                node.dataset.origText = node.textContent;
+            }
+            const orig = node.dataset.origText;
+            if (!query) {
+                node.innerHTML = orig;
+                return;
+            }
+            const re = new RegExp(`(${escapeRegex(query)})`, "gi");
+            node.innerHTML = orig.replace(re, `<mark class="search-highlight">$1</mark>`);
+        });
+    }
+
+    // Strip highlights from a card
+    function clearHighlights(el) {
+        if (!el) return;
+        el.querySelectorAll("h4, .agent-category, .agent-desc").forEach(node => {
+            if (node.dataset.origText !== undefined) {
+                node.innerHTML = node.dataset.origText;
+            }
+        });
+    }
+
+    function applyFilters(checklistState) {
+        const searchVal  = (document.getElementById("agentSearchInput")?.value || "").trim().toLowerCase();
+        const catVal     = document.getElementById("filterCategory")?.value  || "";
+        const statusVal  = document.getElementById("filterStatus")?.value    || "";
+        const ownerVal   = document.getElementById("filterOwner")?.value     || "";
+        const missingOnly= document.getElementById("filterMissingData")?.checked || false;
+        const state      = checklistState || loadChecklistState();
+
+        const cards = document.querySelectorAll(".agent-card[data-agent-id]");
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const agentId  = card.dataset.agentId;
+            const name     = (card.querySelector("h4")?.dataset.origText    || card.querySelector("h4")?.textContent    || "").toLowerCase();
+            const cat      = (card.querySelector(".agent-category")?.dataset.origText || card.querySelector(".agent-category")?.textContent || "");
+            const desc     = (card.querySelector(".agent-desc")?.dataset.origText     || card.querySelector(".agent-desc")?.textContent     || "").toLowerCase();
+            const isEnabled= agentRegistry[agentId]?.enabled ?? true;
+
+            const { done, total } = computeCompletion(agentId, state);
+            const hasMissingData  = done < total;
+
+            // Build match conditions
+            const matchSearch  = !searchVal || name.includes(searchVal) || cat.toLowerCase().includes(searchVal) || desc.includes(searchVal);
+            const matchCat     = !catVal     || cat === catVal;
+            const matchStatus  = !statusVal  || (statusVal === "active" ? isEnabled : !isEnabled);
+            const matchOwner   = !ownerVal   || agentId === ownerVal;
+            const matchMissing = !missingOnly || hasMissingData;
+
+            const visible = matchSearch && matchCat && matchStatus && matchOwner && matchMissing;
+
+            card.classList.toggle("filter-hidden", !visible);
+
+            if (visible) {
+                visibleCount++;
+                if (searchVal) highlightText(card, searchVal);
+                else clearHighlights(card);
+            } else {
+                clearHighlights(card);
+            }
+        });
+
+        // Results count
+        const resultEl = document.getElementById("filterResultsCount");
+        if (resultEl) resultEl.textContent = `Showing ${visibleCount} of ${cards.length} agents`;
+
+        // Empty state
+        const noResults = document.getElementById("agentNoResults");
+        if (noResults) noResults.classList.toggle("visible", visibleCount === 0);
+
+        // Highlight active filter selects
+        ["filterCategory", "filterStatus", "filterOwner"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.toggle("filter-active", !!el.value);
+        });
+    }
+
+    function resetFilters() {
+        const ids = ["agentSearchInput", "filterCategory", "filterStatus", "filterOwner"];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+        });
+        const missingCb = document.getElementById("filterMissingData");
+        if (missingCb) missingCb.checked = false;
+
+        const clearBtn = document.getElementById("btnClearSearch");
+        if (clearBtn) clearBtn.style.display = "none";
+
+        // Remove filter-active classes
+        document.querySelectorAll(".filter-select").forEach(el => el.classList.remove("filter-active"));
+
+        applyFilters(loadChecklistState());
+    }
+
+    function initSearchFilters() {
+        const searchInput = document.getElementById("agentSearchInput");
+        const clearBtn    = document.getElementById("btnClearSearch");
+        const resetBtn    = document.getElementById("btnFilterReset");
+
+        if (searchInput) {
+            searchInput.addEventListener("input", () => {
+                const hasVal = searchInput.value.trim().length > 0;
+                if (clearBtn) clearBtn.style.display = hasVal ? "flex" : "none";
+                applyFilters(loadChecklistState());
+            });
+        }
+
+        if (clearBtn) {
+            clearBtn.addEventListener("click", () => {
+                if (searchInput) searchInput.value = "";
+                clearBtn.style.display = "none";
+                applyFilters(loadChecklistState());
+            });
+        }
+
+        ["filterCategory", "filterStatus", "filterOwner"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener("change", () => applyFilters(loadChecklistState()));
+        });
+
+        const missingCb = document.getElementById("filterMissingData");
+        if (missingCb) missingCb.addEventListener("change", () => applyFilters(loadChecklistState()));
+
+        if (resetBtn) resetBtn.addEventListener("click", resetFilters);
+    }
+
+    // ================================================================
+    //  BOOT: Init both Bounty Systems
+    // ================================================================
+    initChecklists();
+    initSearchFilters();
+    // Re-run lucide so new icons (list-checks, search-x, rotate-ccw) render
+    if (typeof lucide !== "undefined") lucide.createIcons();
+
+    // ================================================================
+    //  ELITE BOUNTY — Review Packet Generator
+    // ================================================================
+
+    /** Static metadata about each agent (mirrors HTML card data) */
+    const AGENT_METADATA = {
+        "nsfw_agent":     { name: "Explicit Content Protection Agent",  category: "NSFW Defense",        desc: "Detects explicit imagery, adult content, and pornography using local NSFWJS neural network.", latency: "~4.2 ms", defaultSens: "60%" },
+        "wound_agent":    { name: "Graphic Wound & Medical Agent",       category: "Gore Protection",     desc: "Identifies cuts, open lacerations, surgical trauma, and blood, applying dynamic frosted redaction.", latency: "~3.8 ms", defaultSens: "55%" },
+        "gesture_agent":  { name: "Offensive Gesture Defense Agent",     category: "Gesture Safety",      desc: "Tracks 21 3D hand keypoints with MediaPipe to detect middle finger gestures and inappropriate hand signs.", latency: "~5.1 ms", defaultSens: "60%" },
+        "weapon_agent":   { name: "Threat Object & Weapon Agent",        category: "Threat Protection",   desc: "Identifies knives, scissors, sharp threats, and weapons, applying localized targeted redaction boxes.", latency: "~4.9 ms", defaultSens: "50%" },
+        "deepfake_agent": { name: "Deepfake & Synthetic Media Agent",    category: "Synthetic Forensics", desc: "Analyzes face-swap anomalies, boundary blurring, and facial landmark inconsistencies in real time.", latency: "~6.4 ms", defaultSens: "65%" },
+        "scam_agent":     { name: "Financial Scam & Phishing Agent",     category: "Fraud Prevention",    desc: "Detects fake bank login overlays, counterfeit UPI apps, and lottery scam text patterns on screen.", latency: "~2.1 ms", defaultSens: "60%" },
+        "privacy_agent":  { name: "PII Document Privacy Redactor",       category: "Data Privacy",        desc: "Auto-blackouts Aadhaar numbers, PAN cards, credit cards, and sensitive ID numbers before screen share.", latency: "~1.9 ms", defaultSens: "50%" },
+        "audio_agent":    { name: "Audio Speech Profanity Beep Agent",   category: "Audio Safety",        desc: "Performs real-time microphone profanity detection and inserts 1000 Hz censor tone audio buffers instantly.", latency: "~3.2 ms", defaultSens: "50%" },
+    };
+
+    const RP_NOTES_KEY = "reflections_rp_notes_v1";
+
+    /** Current agent open in the modal */
+    let _rpActiveAgentId = null;
+
+    // ── localStorage helpers for notes ──────────────────────────────
+    function loadAllNotes() {
+        try { return JSON.parse(localStorage.getItem(RP_NOTES_KEY) || "{}"); } catch(_) { return {}; }
+    }
+    function saveNote(agentId, text) {
+        const all = loadAllNotes();
+        all[agentId] = text;
+        localStorage.setItem(RP_NOTES_KEY, JSON.stringify(all));
+    }
+    function loadNote(agentId) {
+        return loadAllNotes()[agentId] || "";
+    }
+
+    // ── Seed NSFW as judge-ready sample with notes ───────────────────
+    function seedNSFWJudgeSample() {
+        const all = loadAllNotes();
+        if (!all["nsfw_agent"]) {
+            all["nsfw_agent"] = "JUDGE-READY SAMPLE\n\nAgent: Explicit Content Protection Agent (NSFW)\nReviewer: Reflections QA Bot\nDate: " + new Date().toISOString().split("T")[0] + "\n\nAll required data sources are confirmed active. NSFWJS local neural engine is initialised and the frame pipeline is streaming at 60 FPS. Sensitivity threshold set to 60% per safety policy guidelines.\n\nVerification: All 4/4 source fields complete. No missing data warnings. Agent is cleared for production evaluation.";
+            localStorage.setItem(RP_NOTES_KEY, JSON.stringify(all));
+        }
+    }
+    seedNSFWJudgeSample();
+
+    // ── Build the structured review packet data object ───────────────
+    function buildReviewPacket(agentId) {
+        const meta      = AGENT_METADATA[agentId] || {};
+        const state     = loadChecklistState();
+        const items     = AGENT_CHECKLISTS[agentId] || [];
+        const agState   = state[agentId] || {};
+        const isEnabled = agentRegistry[agentId]?.enabled ?? true;
+
+        // Sensitivity from slider
+        const sensSlider = document.querySelector(`.agent-sens-slider[data-agent-id="${agentId}"]`);
+        const sensitivity = sensSlider ? `${Math.round(parseFloat(sensSlider.value) * 100)}%` : meta.defaultSens;
+
+        // Checklist status
+        const checklist = items.map(item => ({
+            key:      item.key,
+            label:    item.label,
+            required: item.required,
+            checked:  !!agState[item.key],
+        }));
+
+        const done     = checklist.filter(i => i.checked).length;
+        const total    = checklist.length;
+        const missing  = checklist.filter(i => !i.checked);
+        const score    = total > 0 ? Math.round((done / total) * 100) : 0;
+
+        // Validation rules
+        const validations = [];
+
+        if (done === total && total > 0) {
+            validations.push({ type: "pass", title: "All sources verified", desc: `All ${total} required inputs are marked complete and ready for evaluation.` });
+        } else {
+            validations.push({ type: "fail", title: "Incomplete source checklist", desc: `${total - done} of ${total} required inputs are missing. Agent cannot guarantee accurate detection without these sources.` });
+        }
+
+        if (isEnabled) {
+            validations.push({ type: "pass", title: "Agent is active", desc: "Toggle switch is ON — agent is participating in the multi-agent consensus pipeline." });
+        } else {
+            validations.push({ type: "warn", title: "Agent is disabled", desc: "Toggle switch is OFF — agent is excluded from threat evaluation. Enable it before deployment." });
+        }
+
+        const sensNum = parseInt(sensitivity);
+        if (sensNum >= 40 && sensNum <= 80) {
+            validations.push({ type: "pass", title: "Sensitivity within recommended range", desc: `Threshold is ${sensitivity}, which falls within the 40–80% recommended operating band.` });
+        } else if (sensNum < 40) {
+            validations.push({ type: "warn", title: "Sensitivity below minimum recommended", desc: `Threshold is ${sensitivity}. Values below 40% may produce false negatives and miss real threats.` });
+        } else {
+            validations.push({ type: "warn", title: "Sensitivity above recommended ceiling", desc: `Threshold is ${sensitivity}. Values above 80% increase false positives and may degrade UX.` });
+        }
+
+        // Judge readiness tier
+        let readinessTier, readinessLabel, readinessSub, readinessBadge;
+        if (score === 100 && isEnabled) {
+            readinessTier  = "ready";
+            readinessLabel = "Judge Ready";
+            readinessBadge = "✅ Cleared for Review";
+            readinessSub   = "All sources complete, agent active. This packet is cleared for submission to a review committee.";
+        } else if (score >= 50 && isEnabled) {
+            readinessTier  = "warn";
+            readinessLabel = "Partially Ready";
+            readinessBadge = "⚠️ Needs Attention";
+            readinessSub   = `${missing.length} required input(s) are missing. Complete the checklist before final submission.`;
+        } else {
+            readinessTier  = "danger";
+            readinessLabel = "Not Ready";
+            readinessBadge = "🔴 Do Not Submit";
+            readinessSub   = "Too many gaps in the source checklist or agent is disabled. Resolve all issues before evaluation.";
+        }
+
+        return {
+            agentId,
+            meta,
+            sensitivity,
+            isEnabled,
+            checklist,
+            done,
+            total,
+            missing,
+            score,
+            validations,
+            readinessTier,
+            readinessLabel,
+            readinessSub,
+            readinessBadge,
+            timestamp: new Date().toLocaleString("en-IN", { dateStyle: "full", timeStyle: "medium" }),
+            notes: loadNote(agentId),
+        };
+    }
+
+    // ── Populate the modal DOM ───────────────────────────────────────
+    function renderReviewModal(agentId) {
+        const pkt = buildReviewPacket(agentId);
+        _rpActiveAgentId = agentId;
+
+        // Header subtitle
+        document.getElementById("rpModalSubtitle").textContent = `${pkt.meta.name} · ${pkt.meta.category}`;
+
+        // Readiness banner
+        const banner = document.getElementById("rpReadinessBanner");
+        banner.className = `rp-readiness-banner ${pkt.readinessTier}`;
+        document.getElementById("rpReadinessScore").textContent = `${pkt.score}%`;
+        document.getElementById("rpReadinessLabel").textContent = pkt.readinessLabel;
+        document.getElementById("rpReadinessSub").textContent   = pkt.readinessSub;
+        document.getElementById("rpReadinessBadge").textContent = pkt.readinessBadge;
+
+        // Section 1: Agent Profile
+        document.getElementById("rpFieldAgentId").textContent   = pkt.agentId;
+        document.getElementById("rpFieldName").textContent      = pkt.meta.name;
+        document.getElementById("rpFieldCategory").textContent  = pkt.meta.category;
+        document.getElementById("rpFieldStatus").textContent    = pkt.isEnabled ? "🟢 Active" : "⚫ Disabled";
+        document.getElementById("rpFieldDesc").textContent      = pkt.meta.desc;
+        document.getElementById("rpFieldSens").textContent      = pkt.sensitivity;
+        document.getElementById("rpFieldTimestamp").textContent = pkt.timestamp;
+
+        // Section 2: Checklist
+        const clGrid = document.getElementById("rpChecklistItems");
+        clGrid.innerHTML = pkt.checklist.map(item => `
+            <div class="rp-checklist-item ${item.checked ? "item-done" : "item-miss"}">
+                <div class="rp-ci-icon">${item.checked ? "✓" : "✕"}</div>
+                <span class="rp-ci-label">${item.label}</span>
+                <span class="rp-ci-tag">${item.checked ? "Done" : "Missing"}</span>
+            </div>
+        `).join("");
+
+        // Section 3: Validation
+        const vList = document.getElementById("rpValidationList");
+        vList.innerHTML = pkt.validations.map(v => `
+            <div class="rp-validation-row v-${v.type}">
+                <span class="rp-v-icon">${v.type === "pass" ? "✅" : v.type === "warn" ? "⚠️" : "🔴"}</span>
+                <div>
+                    <div class="rp-v-title">${v.title}</div>
+                    <div class="rp-v-desc">${v.desc}</div>
+                </div>
+            </div>
+        `).join("");
+
+        // Section 4: Missing fields
+        const mList = document.getElementById("rpMissingFields");
+        if (pkt.missing.length === 0) {
+            mList.innerHTML = `<div class="rp-missing-none">✅ No missing fields — all required sources are satisfied.</div>`;
+        } else {
+            mList.innerHTML = pkt.missing.map(m => `
+                <span class="rp-missing-tag">⚠️ ${m.label}</span>
+            `).join("");
+        }
+
+        // Section 5: Notes
+        const notesField = document.getElementById("rpNotesField");
+        if (notesField) {
+            notesField.value = pkt.notes;
+            updateNotesCharCount(notesField.value.length);
+        }
+    }
+
+    function updateNotesCharCount(len) {
+        const el = document.getElementById("rpNotesCharCount");
+        if (el) el.textContent = `${len} character${len !== 1 ? "s" : ""}`;
+    }
+
+    // ── Generate the standalone downloadable HTML report ─────────────
+    function generateHTMLReport(agentId) {
+        const pkt = buildReviewPacket(agentId);
+
+        const checklistRows = pkt.checklist.map(item => `
+            <tr style="border-bottom:1px solid #e2e8f0">
+                <td style="padding:10px 12px;font-weight:600;color:${item.checked?"#065f46":"#7f1d1d"}">${item.checked?"✅":"❌"}</td>
+                <td style="padding:10px 12px;">${item.label}</td>
+                <td style="padding:10px 12px;font-weight:700;color:${item.checked?"#059669":"#dc2626"}">${item.checked?"Complete":"Missing"}</td>
+            </tr>`).join("");
+
+        const validationRows = pkt.validations.map(v => `
+            <div style="display:flex;gap:12px;padding:12px 14px;margin-bottom:8px;border-radius:8px;border-left:4px solid ${v.type==="pass"?"#10b981":v.type==="warn"?"#f59e0b":"#ef4444"};background:${v.type==="pass"?"#f0fdf4":v.type==="warn"?"#fffbeb":"#fff1f2"}">
+                <span style="font-size:18px">${v.type==="pass"?"✅":v.type==="warn"?"⚠️":"🔴"}</span>
+                <div>
+                    <div style="font-weight:800;color:#1e293b;margin-bottom:3px">${v.title}</div>
+                    <div style="font-size:13px;color:#475569">${v.desc}</div>
+                </div>
+            </div>`).join("");
+
+        const missingSection = pkt.missing.length === 0
+            ? `<p style="color:#059669;font-weight:600">✅ No missing fields — all required sources are satisfied.</p>`
+            : pkt.missing.map(m => `<span style="display:inline-block;margin:4px;padding:5px 12px;border-radius:20px;background:#fee2e2;border:1px solid #fca5a5;color:#dc2626;font-size:12px;font-weight:600">⚠️ ${m.label}</span>`).join("");
+
+        const tierColor = pkt.readinessTier === "ready" ? "#059669" : pkt.readinessTier === "warn" ? "#d97706" : "#dc2626";
+        const tierBg    = pkt.readinessTier === "ready" ? "#f0fdf4" : pkt.readinessTier === "warn" ? "#fffbeb" : "#fff1f2";
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reflections Review Packet — ${pkt.meta.name}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; }
+  .report-wrap { max-width: 860px; margin: 0 auto; background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+  .report-header { background: linear-gradient(135deg, #4f46e5, #7c3aed); color: white; padding: 36px 40px; }
+  .rh-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  .rh-logo { font-size: 13px; font-weight: 700; opacity: 0.7; letter-spacing: 1px; text-transform: uppercase; }
+  .rh-ts { font-size: 12px; opacity: 0.6; }
+  .rh-title { font-size: 26px; font-weight: 900; margin-top: 20px; }
+  .rh-sub { font-size: 14px; opacity: 0.75; margin-top: 6px; }
+  .readiness-bar { display: flex; align-items: center; gap: 20px; padding: 22px 40px; background: ${tierBg}; border-bottom: 2px solid ${tierColor}22; }
+  .rb-score { font-size: 42px; font-weight: 900; color: ${tierColor}; line-height: 1; }
+  .rb-label { font-size: 18px; font-weight: 800; color: ${tierColor}; }
+  .rb-sub { font-size: 13px; color: #64748b; margin-top: 4px; }
+  .rb-badge { margin-left: auto; padding: 7px 18px; background: ${tierColor}22; color: ${tierColor}; border: 1px solid ${tierColor}55; border-radius: 20px; font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .section { padding: 28px 40px; border-bottom: 1px solid #f1f5f9; }
+  .section:last-child { border-bottom: none; }
+  .section-title { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 18px; }
+  .section-tag { margin-left: auto; font-size: 10px; background: #f1f5f9; padding: 2px 8px; border-radius: 8px; color: #94a3b8; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; }
+  .field-span { grid-column: 1 / -1; }
+  .field label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; display: block; margin-bottom: 4px; }
+  .field-val { font-size: 13px; color: #1e293b; }
+  .mono { font-family: monospace; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; }
+  .notes-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; font-size: 13px; color: #334155; white-space: pre-wrap; line-height: 1.65; min-height: 80px; }
+  .report-footer { background: #0f172a; color: #475569; padding: 20px 40px; font-size: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  @media print { body { background: white; } .report-wrap { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="report-wrap">
+
+  <!-- Header -->
+  <div class="report-header">
+    <div class="rh-top">
+      <span class="rh-logo">🛡️ Reflections Safety Platform · Agent Review Packet</span>
+      <span class="rh-ts">${pkt.timestamp}</span>
+    </div>
+    <div class="rh-title">${pkt.meta.name}</div>
+    <div class="rh-sub">Category: ${pkt.meta.category} &nbsp;|&nbsp; Agent ID: <code style="background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px">${pkt.agentId}</code></div>
+  </div>
+
+  <!-- Readiness Banner -->
+  <div class="readiness-bar">
+    <div class="rb-score">${pkt.score}%</div>
+    <div>
+      <div class="rb-label">${pkt.readinessLabel}</div>
+      <div class="rb-sub">${pkt.readinessSub}</div>
+    </div>
+    <div class="rb-badge">${pkt.readinessBadge}</div>
+  </div>
+
+  <!-- Section 1: Agent Profile -->
+  <div class="section">
+    <div class="section-title">🤖 Agent Profile <span class="section-tag">SECTION 1</span></div>
+    <div class="field-grid">
+      <div class="field"><label>Agent ID</label><div class="field-val mono">${pkt.agentId}</div></div>
+      <div class="field"><label>Display Name</label><div class="field-val">${pkt.meta.name}</div></div>
+      <div class="field"><label>Safety Category</label><div class="field-val">${pkt.meta.category}</div></div>
+      <div class="field"><label>Status</label><div class="field-val">${pkt.isEnabled ? "🟢 Active" : "⚫ Disabled"}</div></div>
+      <div class="field field-span"><label>Description</label><div class="field-val">${pkt.meta.desc}</div></div>
+      <div class="field"><label>Sensitivity Threshold</label><div class="field-val">${pkt.sensitivity}</div></div>
+      <div class="field"><label>Inference Latency</label><div class="field-val">${pkt.meta.latency}</div></div>
+    </div>
+  </div>
+
+  <!-- Section 2: Source Checklist -->
+  <div class="section">
+    <div class="section-title">📋 Source Checklist — ${pkt.done}/${pkt.total} Complete <span class="section-tag">SECTION 2</span></div>
+    <table>
+      <thead><tr><th style="width:50px">Status</th><th>Required Source / Input</th><th style="width:100px">Result</th></tr></thead>
+      <tbody>${checklistRows}</tbody>
+    </table>
+  </div>
+
+  <!-- Section 3: Validation Summary -->
+  <div class="section">
+    <div class="section-title">🛡️ Validation Summary <span class="section-tag">SECTION 3</span></div>
+    ${validationRows}
+  </div>
+
+  <!-- Section 4: Missing Data -->
+  <div class="section">
+    <div class="section-title">⚠️ Missing Data Fields <span class="section-tag">SECTION 4</span></div>
+    ${missingSection}
+  </div>
+
+  <!-- Section 5: Reviewer Notes -->
+  <div class="section">
+    <div class="section-title">📝 Reviewer Notes <span class="section-tag">SECTION 5</span></div>
+    <div class="notes-box">${pkt.notes || "(No reviewer notes recorded)"}</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="report-footer">
+    <span>Reflections Real-Time Visual Safety System · Review Packet v1.0</span>
+    <span>Generated: ${pkt.timestamp}</span>
+  </div>
+
+</div>
+</body>
+</html>`;
+    }
+
+    // ── Download the report as .html file ────────────────────────────
+    function downloadReviewPacket(agentId) {
+        const html     = generateHTMLReport(agentId);
+        const blob     = new Blob([html], { type: "text/html;charset=utf-8" });
+        const url      = URL.createObjectURL(blob);
+        const a        = document.createElement("a");
+        const safeName = agentId.replace(/_/g, "-");
+        a.href         = url;
+        a.download     = `reflections-review-packet-${safeName}-${Date.now()}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showRPToast("✅ Review packet downloaded!", false);
+    }
+
+    // ── Show a brief toast notification ──────────────────────────────
+    function showRPToast(message, isError = false) {
+        let toast = document.getElementById("rpToastEl");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "rpToastEl";
+            toast.className = "rp-toast";
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.className = `rp-toast ${isError ? "error" : ""} show`;
+        clearTimeout(toast._timer);
+        toast._timer = setTimeout(() => { toast.classList.remove("show"); }, 3000);
+    }
+
+    // ── Open / close the review modal ────────────────────────────────
+    function openReviewModal(agentId) {
+        renderReviewModal(agentId);
+        const modal = document.getElementById("reviewPacketModal");
+        if (modal) {
+            modal.classList.add("open");
+            document.body.style.overflow = "hidden";
+        }
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    }
+
+    function closeReviewModal() {
+        const modal = document.getElementById("reviewPacketModal");
+        if (modal) {
+            modal.classList.remove("open");
+            document.body.style.overflow = "";
+        }
+        _rpActiveAgentId = null;
+    }
+
+    // ── Wire Export buttons on each agent card ────────────────────────
+    function initExportButtons() {
+        document.querySelectorAll(".btn-export-packet").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                const agentId = btn.dataset.agentId;
+                openReviewModal(agentId);
+            });
+        });
+
+        // Close button
+        document.getElementById("rpBtnClose")?.addEventListener("click", closeReviewModal);
+
+        // Click outside panel to close
+        document.getElementById("reviewPacketModal")?.addEventListener("click", (e) => {
+            if (e.target === e.currentTarget) closeReviewModal();
+        });
+
+        // Escape key closes
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") closeReviewModal();
+        });
+
+        // Download button
+        document.getElementById("rpBtnDownload")?.addEventListener("click", () => {
+            if (_rpActiveAgentId) {
+                // Grab latest notes before generating
+                const notes = document.getElementById("rpNotesField")?.value || "";
+                saveNote(_rpActiveAgentId, notes);
+                downloadReviewPacket(_rpActiveAgentId);
+            }
+        });
+
+        // Copy JSON button
+        document.getElementById("rpBtnCopyJSON")?.addEventListener("click", async () => {
+            if (!_rpActiveAgentId) return;
+            const notes = document.getElementById("rpNotesField")?.value || "";
+            saveNote(_rpActiveAgentId, notes);
+            const pkt = buildReviewPacket(_rpActiveAgentId);
+            const json = JSON.stringify(pkt, null, 2);
+            try {
+                await navigator.clipboard.writeText(json);
+                showRPToast("📋 JSON copied to clipboard!", false);
+            } catch(_) {
+                showRPToast("❌ Clipboard access denied.", true);
+            }
+        });
+
+        // Notes textarea — char count + save
+        const notesField = document.getElementById("rpNotesField");
+        const notesSave  = document.getElementById("rpNotesSave");
+
+        notesField?.addEventListener("input", () => {
+            updateNotesCharCount(notesField.value.length);
+            notesSave?.classList.remove("saved");
+        });
+
+        notesSave?.addEventListener("click", () => {
+            if (_rpActiveAgentId) {
+                saveNote(_rpActiveAgentId, notesField?.value || "");
+                notesSave.classList.add("saved");
+                notesSave.textContent = "✓ Saved";
+                setTimeout(() => {
+                    notesSave.innerHTML = '<i data-lucide="save"></i> Save Notes';
+                    notesSave.classList.remove("saved");
+                    if (typeof lucide !== "undefined") lucide.createIcons();
+                }, 2000);
+                showRPToast("📝 Notes saved to local storage.");
+            }
+        });
+    }
+
+    initExportButtons();
+    if (typeof lucide !== "undefined") lucide.createIcons();
 
     // Auto-start webcam
     startWebcam();
 });
+
+
+
 

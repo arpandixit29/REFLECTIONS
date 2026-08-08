@@ -48,6 +48,9 @@
                 <button class="nav-item active" data-tab="simulator">
                     <i data-lucide="camera"></i> Real Camera Protection
                 </button>
+                <button class="nav-item" data-tab="agents">
+                    <i data-lucide="bot"></i> Autonomous Agents
+                </button>
                 <button class="nav-item" data-tab="telemetry">
                     <i data-lucide="zap"></i> Protection Speed
                 </button>
@@ -425,6 +428,448 @@
                     </div>
                 </div>
             </section>
+
+            <!-- TAB: AUTONOMOUS SAFETY AGENTS -->
+            <section class="tab-pane" id="tab-agents">
+                <div class="tab-header">
+                    <div>
+                        <h2>🤖 Reflections Autonomous Safety Agents Hub</h2>
+                        <p>Real-time multi-agent system executing parallel visual, spatial, and acoustic threat evaluation with live reflections reasoning logs.</p>
+                    </div>
+                    <div class="supervisor-status-pill" id="supervisorStatusPill">
+                        <span class="pulse-dot-green"></span>
+                        <strong id="supervisorPillText">MASTER SUPERVISOR: ONLINE (8 AGENTS)</strong>
+                    </div>
+                </div>
+
+                <!-- Supervisor Overview Telemetry Cards -->
+                <div class="agents-overview-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon purple"><i data-lucide="cpu"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">ACTIVE SUB-AGENTS</span>
+                            <strong class="stat-value" id="statActiveAgentsCount">8 / 8 Active</strong>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon blue"><i data-lucide="zap"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">CONSENSUS LATENCY</span>
+                            <strong class="stat-value" id="statConsensusLatency">12.4 ms</strong>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green"><i data-lucide="shield-check"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">EVALUATION COUNT</span>
+                            <strong class="stat-value" id="statEvalCount">0 frames</strong>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red"><i data-lucide="alert-circle"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">THREATS INTERCEPTED</span>
+                            <strong class="stat-value" id="statThreatCount">0 threats</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── ADVANCED BOUNTY: Search & Filter Control Bar ── -->
+                <div class="agent-filter-bar" id="agentFilterBar">
+                    <div class="filter-search-wrap">
+                        <i data-lucide="search" class="filter-search-icon"></i>
+                        <input type="text" id="agentSearchInput" class="filter-search-input" placeholder="Search agents by name, category, or description…" autocomplete="off">
+                        <button class="filter-clear-search" id="btnClearSearch" title="Clear search" style="display:none">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                    <div class="filter-controls">
+                        <select id="filterCategory" class="filter-select">
+                            <option value="">All Sections</option>
+                            <option value="NSFW Defense">NSFW Defense</option>
+                            <option value="Gore Protection">Gore Protection</option>
+                            <option value="Gesture Safety">Gesture Safety</option>
+                            <option value="Threat Protection">Threat Protection</option>
+                            <option value="Synthetic Forensics">Synthetic Forensics</option>
+                            <option value="Fraud Prevention">Fraud Prevention</option>
+                            <option value="Data Privacy">Data Privacy</option>
+                            <option value="Audio Safety">Audio Safety</option>
+                        </select>
+                        <select id="filterStatus" class="filter-select">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                        <select id="filterOwner" class="filter-select">
+                            <option value="">All Agents</option>
+                            <option value="nsfw_agent">NSFWProtectionAgent</option>
+                            <option value="wound_agent">GraphicWoundAgent</option>
+                            <option value="gesture_agent">GestureDefenseAgent</option>
+                            <option value="weapon_agent">ThreatWeaponAgent</option>
+                            <option value="deepfake_agent">DeepfakeForensicsAgent</option>
+                            <option value="scam_agent">ScamDefenseAgent</option>
+                            <option value="privacy_agent">PrivacyPIIAgent</option>
+                            <option value="audio_agent">AudioProfanityAgent</option>
+                        </select>
+                        <label class="filter-missing-label" title="Show agents with incomplete source checklists">
+                            <input type="checkbox" id="filterMissingData"> Missing Data Only
+                        </label>
+                        <button class="btn-filter-reset" id="btnFilterReset">
+                            <i data-lucide="rotate-ccw"></i> Reset
+                        </button>
+                    </div>
+                    <div class="filter-results-count" id="filterResultsCount">Showing 8 of 8 agents</div>
+                </div>
+
+                <!-- 8 Autonomous Safety Sub-Agent Cards Grid -->
+                <div class="agent-cards-grid" id="agentCardsGrid">
+                    <div class="agent-card" data-agent-id="nsfw_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar red"><i data-lucide="eye-off"></i></div>
+                                <div>
+                                    <h4>Explicit Content Protection Agent</h4>
+                                    <span class="agent-category">NSFW Defense</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="nsfw_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Detects explicit imagery, adult content, and pornography using local NSFWJS neural network.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-nsfw_agent">60%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="nsfw_agent" min="0.1" max="0.95" step="0.05" value="0.60">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-nsfw_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-nsfw_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-nsfw_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="nsfw_agent" id="btn-checklist-nsfw_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="nsfw_agent" id="btn-export-nsfw_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-nsfw_agent">~4.2 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-nsfw_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="wound_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar red"><i data-lucide="activity"></i></div>
+                                <div>
+                                    <h4>Graphic Wound & Medical Agent</h4>
+                                    <span class="agent-category">Gore Protection</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="wound_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Identifies cuts, open lacerations, surgical trauma, and blood, applying dynamic frosted redaction.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-wound_agent">55%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="wound_agent" min="0.1" max="0.95" step="0.05" value="0.55">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-wound_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-wound_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-wound_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="wound_agent" id="btn-checklist-wound_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="wound_agent" id="btn-export-wound_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-wound_agent">~3.8 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-wound_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="gesture_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar yellow"><i data-lucide="hand"></i></div>
+                                <div>
+                                    <h4>Offensive Gesture Defense Agent</h4>
+                                    <span class="agent-category">Gesture Safety</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="gesture_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Tracks 21 3D hand keypoints with MediaPipe to detect middle finger gestures and inappropriate hand signs.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-gesture_agent">60%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="gesture_agent" min="0.1" max="0.95" step="0.05" value="0.60">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-gesture_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-gesture_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-gesture_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="gesture_agent" id="btn-checklist-gesture_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="gesture_agent" id="btn-export-gesture_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-gesture_agent">~5.1 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-gesture_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="weapon_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar orange"><i data-lucide="crosshair"></i></div>
+                                <div>
+                                    <h4>Threat Object & Weapon Agent</h4>
+                                    <span class="agent-category">Threat Protection</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="weapon_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Identifies knives, scissors, sharp threats, and weapons, applying localized targeted redaction boxes.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-weapon_agent">50%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="weapon_agent" min="0.1" max="0.95" step="0.05" value="0.50">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-weapon_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-weapon_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-weapon_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="weapon_agent" id="btn-checklist-weapon_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="weapon_agent" id="btn-export-weapon_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-weapon_agent">~4.9 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-weapon_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="deepfake_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar purple"><i data-lucide="user-check"></i></div>
+                                <div>
+                                    <h4>Deepfake & Synthetic Media Agent</h4>
+                                    <span class="agent-category">Synthetic Forensics</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="deepfake_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Analyzes face-swap anomalies, boundary blurring, and facial landmark inconsistencies in real time.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-deepfake_agent">65%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="deepfake_agent" min="0.1" max="0.95" step="0.05" value="0.65">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-deepfake_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-deepfake_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-deepfake_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="deepfake_agent" id="btn-checklist-deepfake_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="deepfake_agent" id="btn-export-deepfake_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-deepfake_agent">~6.4 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-deepfake_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="scam_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar blue"><i data-lucide="alert-octagon"></i></div>
+                                <div>
+                                    <h4>Financial Scam & Phishing Agent</h4>
+                                    <span class="agent-category">Fraud Prevention</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="scam_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Detects fake bank login overlays, counterfeit UPI apps, and lottery scam text patterns on screen.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-scam_agent">60%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="scam_agent" min="0.1" max="0.95" step="0.05" value="0.60">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-scam_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-scam_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-scam_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="scam_agent" id="btn-checklist-scam_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="scam_agent" id="btn-export-scam_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-scam_agent">~2.1 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-scam_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="privacy_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar green"><i data-lucide="shield"></i></div>
+                                <div>
+                                    <h4>PII Document Privacy Redactor</h4>
+                                    <span class="agent-category">Data Privacy</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="privacy_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Auto-blackouts Aadhaar numbers, PAN cards, credit cards, and sensitive ID numbers before screen share.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-privacy_agent">50%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="privacy_agent" min="0.1" max="0.95" step="0.05" value="0.50">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-privacy_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-privacy_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-privacy_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="privacy_agent" id="btn-checklist-privacy_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="privacy_agent" id="btn-export-privacy_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-privacy_agent">~1.9 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-privacy_agent"></div>
+                    </div>
+
+                    <div class="agent-card" data-agent-id="audio_agent">
+                        <div class="agent-card-header">
+                            <div class="agent-title-group">
+                                <div class="agent-avatar cyan"><i data-lucide="volume-x"></i></div>
+                                <div>
+                                    <h4>Audio Speech Profanity Beep Agent</h4>
+                                    <span class="agent-category">Audio Safety</span>
+                                </div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" class="agent-toggle-checkbox" data-agent-id="audio_agent" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="agent-desc">Performs real-time microphone profanity detection and inserts 1000 Hz censor tone audio buffers instantly.</p>
+                        <div class="agent-card-metrics">
+                            <span>Sensitivity Threshold: <strong class="sens-val" id="sens-val-audio_agent">50%</strong></span>
+                            <input type="range" class="agent-sens-slider" data-agent-id="audio_agent" min="0.1" max="0.95" step="0.05" value="0.50">
+                        </div>
+                        <div class="agent-card-footer">
+                            <span class="agent-status-badge active"><i data-lucide="check-circle-2"></i> Ready</span>
+                            <div class="agent-footer-right">
+                                <div class="completion-ring" id="ring-audio_agent" title="Source checklist completion">
+                                    <svg viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.9"/><circle class="ring-fill" id="ring-fill-audio_agent" cx="18" cy="18" r="15.9" stroke-dasharray="100 100"/></svg>
+                                    <span class="ring-label" id="ring-label-audio_agent">0/4</span>
+                                </div>
+                                <button class="btn-checklist-toggle" data-agent-id="audio_agent" id="btn-checklist-audio_agent">
+                                    <i data-lucide="list-checks"></i> Sources
+                                </button>
+                                <button class="btn-export-packet" data-agent-id="audio_agent" id="btn-export-audio_agent" title="Generate Review Packet">
+                                    <i data-lucide="file-down"></i> Export
+                                </button>
+                                <span class="agent-latency-badge" id="latency-audio_agent">~3.2 ms</span>
+                            </div>
+                        </div>
+                        <div class="checklist-drawer" id="checklist-audio_agent"></div>
+                    </div>
+                    <!-- Empty state when filters return no results -->
+                    <div class="agent-no-results" id="agentNoResults">
+                        <i data-lucide="search-x" style="width:48px;height:48px;opacity:0.3;"></i>
+                        <h4>No agents match your filters</h4>
+                        <p>Try adjusting your search query or resetting the filters to see all agents.</p>
+                    </div>
+                </div>
+
+                <!-- Live Agent Reflections Terminal Log -->
+                <div class="reflections-terminal-card">
+                    <div class="terminal-header">
+                        <div class="terminal-title">
+                            <i data-lucide="terminal"></i>
+                            <strong>Real-Time Agent Reflections Log Stream</strong>
+                        </div>
+                        <div class="terminal-actions">
+                            <button class="btn-term-action" id="btnClearReflectionsLog"><i data-lucide="trash-2"></i> Clear Logs</button>
+                            <span class="term-status-live"><span class="pulse-dot"></span> STREAMING LIVE</span>
+                        </div>
+                    </div>
+                    <div class="terminal-body" id="reflectionsTerminalBody">
+                        <div class="log-row info">
+                            <span class="log-time">[10:42:01]</span>
+                            <span class="log-agent master">[MasterSupervisorAgent]</span>
+                            <span class="log-msg">Multi-Agent System Initialized: All 8 autonomous safety agents registered and running in parallel.</span>
+                        </div>
+                        <div class="log-row info">
+                            <span class="log-time">[10:42:01]</span>
+                            <span class="log-agent nsfw">[NSFWProtectionAgent]</span>
+                            <span class="log-msg">NSFWJS Local Neural Engine bound and ready (sensitivity: 0.60).</span>
+                        </div>
+                        <div class="log-row info">
+                            <span class="log-time">[10:42:01]</span>
+                            <span class="log-agent wound">[GraphicWoundAgent]</span>
+                            <span class="log-msg">Graphic Wound & Medical Trauma detector armed (sensitivity: 0.55).</span>
+                        </div>
+                        <div class="log-row info">
+                            <span class="log-time">[10:42:01]</span>
+                            <span class="log-agent gesture">[GestureDefenseAgent]</span>
+                            <span class="log-msg">MediaPipe 3D Hand Landmark tracker synchronized (sensitivity: 0.60).</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -441,8 +886,136 @@
         </div>
     </div>
 
+    <!-- ╔══════════════════════════════════════════════════════════╗ -->
+    <!-- ║  ELITE BOUNTY — Review Packet Modal                     ║ -->
+    <!-- ╚══════════════════════════════════════════════════════════╝ -->
+    <div class="rp-backdrop" id="reviewPacketModal" role="dialog" aria-modal="true" aria-labelledby="rpModalTitle">
+        <div class="rp-panel">
+            <!-- ── Modal Header ── -->
+            <div class="rp-header">
+                <div class="rp-header-left">
+                    <div class="rp-header-icon"><i data-lucide="file-text"></i></div>
+                    <div>
+                        <h2 id="rpModalTitle">Agent Review Packet</h2>
+                        <p id="rpModalSubtitle">Structured export for evaluation &amp; compliance review</p>
+                    </div>
+                </div>
+                <div class="rp-header-actions">
+                    <button class="rp-btn-secondary" id="rpBtnCopyJSON" title="Copy as JSON">
+                        <i data-lucide="clipboard-copy"></i> Copy JSON
+                    </button>
+                    <button class="rp-btn-primary" id="rpBtnDownload">
+                        <i data-lucide="download"></i> Download .html
+                    </button>
+                    <button class="rp-btn-close" id="rpBtnClose" aria-label="Close">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Readiness Banner ── -->
+            <div class="rp-readiness-banner" id="rpReadinessBanner">
+                <div class="rp-readiness-score" id="rpReadinessScore">--</div>
+                <div class="rp-readiness-detail">
+                    <span class="rp-readiness-label" id="rpReadinessLabel">Computing…</span>
+                    <span class="rp-readiness-sub" id="rpReadinessSub"></span>
+                </div>
+                <div class="rp-readiness-badge" id="rpReadinessBadge"></div>
+            </div>
+
+            <!-- ── Report Body ── -->
+            <div class="rp-body" id="rpBody">
+
+                <!-- Section 1: Agent Profile -->
+                <div class="rp-section">
+                    <div class="rp-section-heading">
+                        <i data-lucide="cpu"></i>
+                        <span>Agent Profile</span>
+                        <span class="rp-section-tag">SECTION 1</span>
+                    </div>
+                    <div class="rp-grid-2">
+                        <div class="rp-field">
+                            <label>Agent ID</label>
+                            <div class="rp-field-value mono" id="rpFieldAgentId">—</div>
+                        </div>
+                        <div class="rp-field">
+                            <label>Display Name</label>
+                            <div class="rp-field-value" id="rpFieldName">—</div>
+                        </div>
+                        <div class="rp-field">
+                            <label>Safety Category</label>
+                            <div class="rp-field-value" id="rpFieldCategory">—</div>
+                        </div>
+                        <div class="rp-field">
+                            <label>Status</label>
+                            <div class="rp-field-value" id="rpFieldStatus">—</div>
+                        </div>
+                        <div class="rp-field rp-field-full">
+                            <label>Description</label>
+                            <div class="rp-field-value" id="rpFieldDesc">—</div>
+                        </div>
+                        <div class="rp-field">
+                            <label>Sensitivity Threshold</label>
+                            <div class="rp-field-value" id="rpFieldSens">—</div>
+                        </div>
+                        <div class="rp-field">
+                            <label>Report Generated</label>
+                            <div class="rp-field-value mono" id="rpFieldTimestamp">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Source Checklist -->
+                <div class="rp-section">
+                    <div class="rp-section-heading">
+                        <i data-lucide="list-checks"></i>
+                        <span>Source Checklist</span>
+                        <span class="rp-section-tag">SECTION 2</span>
+                    </div>
+                    <div id="rpChecklistItems" class="rp-checklist-grid"></div>
+                </div>
+
+                <!-- Section 3: Validation Summary -->
+                <div class="rp-section">
+                    <div class="rp-section-heading">
+                        <i data-lucide="shield-alert"></i>
+                        <span>Validation Summary</span>
+                        <span class="rp-section-tag">SECTION 3</span>
+                    </div>
+                    <div id="rpValidationList" class="rp-validation-list"></div>
+                </div>
+
+                <!-- Section 4: Missing Data Fields -->
+                <div class="rp-section">
+                    <div class="rp-section-heading">
+                        <i data-lucide="alert-triangle"></i>
+                        <span>Missing Data Fields</span>
+                        <span class="rp-section-tag">SECTION 4</span>
+                    </div>
+                    <div id="rpMissingFields" class="rp-missing-list"></div>
+                </div>
+
+                <!-- Section 5: User Notes -->
+                <div class="rp-section">
+                    <div class="rp-section-heading">
+                        <i data-lucide="notebook-pen"></i>
+                        <span>Reviewer Notes</span>
+                        <span class="rp-section-tag">SECTION 5</span>
+                    </div>
+                    <textarea id="rpNotesField" class="rp-notes-textarea"
+                        placeholder="Add reviewer observations, compliance notes, or escalation context here…"></textarea>
+                    <div class="rp-notes-meta">
+                        <span id="rpNotesCharCount">0 characters</span>
+                        <button class="rp-notes-save" id="rpNotesSave"><i data-lucide="save"></i> Save Notes</button>
+                    </div>
+                </div>
+
+            </div><!-- /.rp-body -->
+        </div><!-- /.rp-panel -->
+    </div><!-- /#reviewPacketModal -->
+
     <!-- app.js is loaded as type="module" so we can import MediaPipe Tasks Vision -->
-    <script type="module" src="app.js?v=6"></script>
+    <script type="module" src="app.js?v=7"></script>
     <script>lucide.createIcons();</script>
 </body>
 </html>

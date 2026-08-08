@@ -22,8 +22,8 @@ from PIL import Image
 from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
-
+from typing import List, Optional, Dict, Any
+from agents import MasterSupervisorAgent
 
 # --------------------------------------------------------------------
 # Reflections Cloud Backend API (FastAPI + PyTorch GPU Engine)
@@ -31,8 +31,8 @@ from typing import List, Optional
 
 app = FastAPI(
     title="Reflections Cloud Production Engine",
-    description="High-performance, privacy-focused visual threat detection API for explicit content, deepfakes, scams, and PII redaction.",
-    version="1.0.0"
+    description="High-performance, privacy-focused visual threat detection API with Autonomous Multi-Agent Protection.",
+    version="1.2.0"
 )
 
 app.add_middleware(
@@ -48,6 +48,15 @@ nsfw_model = None
 deepfake_model = None
 wound_model = None
 whisper_model = None
+master_supervisor = MasterSupervisorAgent()
+
+class AgentToggleRequest(BaseModel):
+    agent_id: str
+    enabled: Optional[bool] = None
+
+class AgentSensitivityRequest(BaseModel):
+    agent_id: str
+    sensitivity: float
 
 class DetectionResponse(BaseModel):
     status: str
@@ -78,8 +87,8 @@ class AudioInspectionResponse(BaseModel):
 
 @app.on_event("startup")
 def load_deep_learning_models():
-    global nsfw_model, deepfake_model, wound_model, whisper_model
-    print("[Reflections Backend] Initializing GPU Deep Learning Engine...")
+    global nsfw_model, deepfake_model, wound_model, whisper_model, master_supervisor
+    print("[Reflections Backend] Initializing GPU Deep Learning Engine & Autonomous Agents...")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[Reflections Backend] Device bound: {device}")
 
@@ -120,6 +129,10 @@ def load_deep_learning_models():
     except Exception as e:
         print(f"[Reflections Backend] Wound Model load note: {e}")
 
+    # Bind loaded models into Master Supervisor Agent
+    master_supervisor = MasterSupervisorAgent(models_dict={"nsfw": nsfw_model, "wound": wound_model})
+    print("[Reflections Backend] [OK] Master Supervisor Agent & 8 Autonomous Safety Sub-Agents Online.")
+
 preprocess = T.Compose([
     T.Resize((224, 224)),
     T.ToTensor(),
@@ -129,12 +142,68 @@ preprocess = T.Compose([
 @app.get("/")
 def health_check():
     return {
-        "service": "Reflections AI Engine",
+        "service": "Reflections Autonomous Agent AI Engine",
         "status": "ONLINE",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "gpu_available": torch.cuda.is_available(),
-        "capabilities": ["NSFW_BLUR", "DEEPFAKE_DETECTION", "SCAM_OCR", "WOUND_GRAPHIC_BLUR"]
+        "active_agents": len(master_supervisor.sub_agents),
+        "capabilities": [
+            "NSFW_BLUR_AGENT",
+            "WOUND_RED_AGENT",
+            "GESTURE_DEFENSE_AGENT",
+            "THREAT_WEAPON_AGENT",
+            "DEEPFAKE_FORENSICS_AGENT",
+            "SCAM_DEFENSE_AGENT",
+            "PII_PRIVACY_AGENT",
+            "AUDIO_PROFANITY_AGENT"
+        ]
     }
+
+# --------------------------------------------------------------------
+# Autonomous Agent Management & Inspection Endpoints
+# --------------------------------------------------------------------
+
+@app.get("/v1/agents/status")
+def get_agents_status():
+    """Return status and telemetry for Master Supervisor and all 8 Safety Sub-Agents."""
+    return {
+        "status": "SUCCESS",
+        "total_agents": len(master_supervisor.sub_agents) + 1,
+        "agents": master_supervisor.get_all_agent_statuses()
+    }
+
+@app.post("/v1/agents/toggle")
+def toggle_agent(req: AgentToggleRequest):
+    """Dynamically toggle an agent ON/OFF by agent_id."""
+    if req.agent_id == "master_supervisor":
+        new_state = master_supervisor.toggle(req.enabled)
+    else:
+        new_state = master_supervisor.toggle_sub_agent(req.agent_id, req.enabled)
+    return {"status": "SUCCESS", "agent_id": req.agent_id, "enabled": new_state}
+
+@app.post("/v1/agents/sensitivity")
+def update_agent_sensitivity(req: AgentSensitivityRequest):
+    """Adjust agent sensitivity threshold (0.0 to 1.0)."""
+    if req.agent_id == "master_supervisor":
+        new_sens = master_supervisor.set_sensitivity(req.sensitivity)
+    else:
+        new_sens = master_supervisor.set_sub_agent_sensitivity(req.agent_id, req.sensitivity)
+    return {"status": "SUCCESS", "agent_id": req.agent_id, "sensitivity": new_sens}
+
+@app.get("/v1/agents/logs")
+def get_agent_reflections_logs():
+    """Return step-by-step agent reflections log stream."""
+    return {
+        "status": "SUCCESS",
+        "log_count": len(master_supervisor.reflections_log),
+        "logs": master_supervisor.reflections_log[-50:]
+    }
+
+@app.post("/v1/agents/evaluate")
+async def evaluate_agent_payload(payload: Dict[str, Any]):
+    """Run full Multi-Agent consensus evaluation on arbitrary media payload."""
+    res = await master_supervisor.evaluate(payload)
+    return res
 
 @app.post("/v1/inspect", response_model=DetectionResponse)
 async def inspect_media_frame(file: UploadFile = File(...)):
