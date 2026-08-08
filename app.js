@@ -251,16 +251,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    // Button handler: "Free Camera for WhatsApp Call"
-    btnReleaseCam.addEventListener("click", async () => {
-        await releaseCameraHardware();
-        streamStatusText.textContent = "Camera Released for WhatsApp ✓";
-        activeAppTitle.textContent = "📷 Camera Released — WhatsApp Video Call can now use your camera";
-        liveModeBadgeText.textContent = "Camera Off";
-        btnReleaseCam.style.opacity = "0.6";
-        btnReleaseCam.querySelector("span").textContent = "Camera Released ✓";
-        if (window.lucide) lucide.createIcons();
-    });
+    // Button handler: "Free Camera for WhatsApp Call" (if present)
+    const btnReleaseCam = document.getElementById("btnReleaseCam");
+    if (btnReleaseCam) {
+        btnReleaseCam.addEventListener("click", async () => {
+            await releaseCameraHardware();
+            streamStatusText.textContent = "Camera Released for WhatsApp ✓";
+            activeAppTitle.textContent = "📷 Camera Released — WhatsApp Video Call can now use your camera";
+            liveModeBadgeText.textContent = "Camera Off";
+            btnReleaseCam.style.opacity = "0.6";
+            btnReleaseCam.querySelector("span").textContent = "Camera Released ✓";
+            if (window.lucide) lucide.createIcons();
+        });
+    }
 
     async function startWebcam() {
         await releaseCameraHardware();
@@ -277,8 +280,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             activeAppTitle.textContent = "Real-Time AI Camera Protection (Clean View)";
             btnStartRealScreen.classList.remove("active");
             btnStartRealScreen.querySelector("span").textContent = "Scan My WhatsApp / Screen";
-            btnReleaseCam.style.opacity = "1";
-            btnReleaseCam.querySelector("span").textContent = "Free Camera for WhatsApp Call";
+            if (btnReleaseCam) {
+                btnReleaseCam.style.opacity = "1";
+                btnReleaseCam.querySelector("span").textContent = "Free Camera for WhatsApp Call";
+            }
             if (window.lucide) lucide.createIcons();
             startLoop();
         } catch (err) {
