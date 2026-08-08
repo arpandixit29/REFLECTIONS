@@ -996,9 +996,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         "passion", "massage", "message", "bless", "dress", "press", "process", "business"
     ]);
 
+    function devanagariToRoman(text) {
+        if (!text) return "";
+        return text
+            .replace(/बहनचोद|भेंचोद|बेहनचोद|बहनचोध|भेंचोदे|बेन्चोद/g, "bhenchod")
+            .replace(/मादरचोद|मादरचोध|मादरचोदे|मादरचोद/g, "madarchod")
+            .replace(/चूतिया|चूतिये|चूत्य|चूत|चूतियापा/g, "chutiya")
+            .replace(/भोसड़ीके|भोसडीके|भोसडा|भोसडी/g, "bhosdike")
+            .replace(/लौडा|लोडा|लौड़े|लौडे|लौड़ा/g, "lauda")
+            .replace(/गांड|गाँड|गांडू|गांडमारू/g, "gand")
+            .replace(/हरामी|हरामजादा|हरामज़ादा/g, "harami")
+            .replace(/साला|साले|साली/g, "saala")
+            .replace(/रंडी|रांड|रन्डी/g, "randi")
+            .replace(/कुत्ता|कुत्ते|कुत्तिया/g, "kutta")
+            .replace(/कमीना|कमीने/g, "kamina");
+    }
+
     function normalizeText(text) {
         if (!text) return "";
-        let t = text.toLowerCase().trim();
+        let t = devanagariToRoman(text.toLowerCase().trim());
         t = t.replace(/[^\w\s@$01357!]+$/g, "").replace(/^[^\w\s@$01357!]+/g, "");
         t = t.replace(/@/g, "a").replace(/\$/g, "s").replace(/0/g, "o").replace(/1/g, "i");
         t = t.replace(/3/g, "e").replace(/5/g, "s").replace(/7/g, "t");
@@ -1008,18 +1024,33 @@ document.addEventListener("DOMContentLoaded", async () => {
         return t.trim();
     }
 
+    const EXACT_SHORT_ABUSIVE = new Set([
+        "bc", "b.c", "mc", "m.c", "bsdk", "b.s.d.k", "fck", "fuk", "fuki", "fci", "fckin", "fk"
+    ]);
+
+    const CORE_ABUSIVE_ROOTS = [
+        // English explicit roots
+        "fuck", "fuk", "fck", "shit", "bitch", "bastard", "cunt", "asshole", "motherfuck", "bullshit", "pussy", "dick", "cock", "twat", "wanker", "prick",
+        // Hindi phonetic & slang roots (Roman Hindi + variations)
+        "bhenchod", "benchod", "bhinchod", "bhench", "bhenchd", "behanchod", "bhenklod", "bhenchot", "bhenchode",
+        "madarchod", "maderchod", "madrchod", "maadarchod", "machod", "madarch", "motherchod", "madarchode",
+        "chutiya", "chutiye", "chootiya", "chutiyap", "chutwa", "choot", "chut",
+        "bhosdi", "bhosda", "bhosdike", "bhosdika", "bsdk",
+        "lauda", "loda", "lowda", "laude", "lode", "lodey",
+        "gaand", "gand", "gandu", "gaandu", "gandmaru", "gandwa",
+        "harami", "haramzad", "haramjad",
+        "randi", "rndi", "randwa",
+        "saala", "saale", "saley", "kamina", "kamine", "kutta", "kutte", "kuttiya", "tatty", "tatti", "suar"
+    ];
+
     function isProfaneToken(word) {
         if (!word) return false;
         const cleanW = normalizeText(word);
         if (!cleanW || cleanW.length < 2) return false;
         if (SAFE_WORDS.has(cleanW)) return false;
+        if (EXACT_SHORT_ABUSIVE.has(cleanW)) return true;
         if (profanitySet.has(cleanW)) return true;
 
-        // Substring root matching ONLY for known abusive roots of length >= 4 (or core explicit roots)
-        const CORE_ABUSIVE_ROOTS = [
-            "fuck", "bhenchod", "madarchod", "chutiya", "bhosdi", "gaand", "gand",
-            "lauda", "loda", "bastard", "cunt", "bitch", "motherfucker", "bullshit"
-        ];
         for (let root of CORE_ABUSIVE_ROOTS) {
             if (cleanW.includes(root)) return true;
         }
@@ -1221,10 +1252,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const cleanW = normalizeText(w);
                 if (isProfaneToken(w)) {
                     const lastBeep = wordBeepCooldownMap.get(cleanW) || 0;
-                    // Trigger beep if more than 500ms has elapsed since this word was last beeped
-                    if (nowMs - lastBeep > 500) {
+                    // Trigger beep if more than 280ms has elapsed since this word was last beeped (fast zero-latency response)
+                    if (nowMs - lastBeep > 280) {
                         wordBeepCooldownMap.set(cleanW, nowMs);
-                        triggerCensorBeep(500);
+                        triggerCensorBeep(450);
                         addTimestampLogEntry(timeStr, audioSourceTag, w, "Abusive Speech", "BEEP_OVERLAY");
                     }
                     cleanedWords.push(`<span class="word-flagged-beep">[BEEP: ${w.toUpperCase()}]</span>`);
