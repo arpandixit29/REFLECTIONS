@@ -1143,7 +1143,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     //  1. LIVE MICROPHONE SPEECH RECOGNITION & BEEP FILTER
     // ================================================================
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let beepedSessionKeys = new Set(); // Track beeped word keys per recognition turn to avoid duplicate continuous beeps
+    let wordBeepCooldownMap = new Map(); // Map of clean_word -> last_beep_timestamp_ms
 
     function initSpeechRecognition() {
         if (!SpeechRec) {
@@ -1160,7 +1160,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         speechRecognition.onstart = () => {
             micActive = true;
-            beepedSessionKeys.clear();
+            wordBeepCooldownMap.clear();
             if (micStatusBox) micStatusBox.classList.add("active");
             if (micStatusText) micStatusText.textContent = "Mic active — listening continuously for abusive language (English & Roman Hindi)...";
             if (listeningTag) {
@@ -1192,22 +1192,25 @@ document.addEventListener("DOMContentLoaded", async () => {
             const currentText = finalTranscript || interimTranscript;
             if (!currentText) return;
 
-            // Process words for profanity with deduplication across interim frames
+            // Process words for profanity with smart time-cooldown deduplication
             const words = currentText.trim().split(/\s+/);
             let cleanedWords = [];
 
-            const now = new Date();
-            const timeStr = now.toTimeString().split(" ")[0] + "." + String(now.getMilliseconds()).padStart(3, "0");
+            const nowObj = new Date();
+            const nowMs  = Date.now();
+            const timeStr = nowObj.toTimeString().split(" ")[0] + "." + String(nowObj.getMilliseconds()).padStart(3, "0");
 
             const hasCallAudio = activeMediaStream && activeMediaStream.getAudioTracks().length > 0;
             const audioSourceTag = hasCallAudio ? "WhatsApp Call Stream" : "Live Microphone";
 
-            words.forEach((w, wIdx) => {
+            words.forEach((w) => {
+                const cleanW = normalizeText(w);
                 if (isProfaneToken(w)) {
-                    const wordKey = `${event.resultIndex}_${wIdx}_${w.toLowerCase()}`;
-                    if (!beepedSessionKeys.has(wordKey)) {
-                        beepedSessionKeys.add(wordKey);
-                        triggerCensorBeep(550);
+                    const lastBeep = wordBeepCooldownMap.get(cleanW) || 0;
+                    // Trigger beep if more than 500ms has elapsed since this word was last beeped
+                    if (nowMs - lastBeep > 500) {
+                        wordBeepCooldownMap.set(cleanW, nowMs);
+                        triggerCensorBeep(500);
                         addTimestampLogEntry(timeStr, audioSourceTag, w, "Abusive Speech", "BEEP_OVERLAY");
                     }
                     cleanedWords.push(`<span class="word-flagged-beep">[BEEP: ${w.toUpperCase()}]</span>`);
@@ -1221,19 +1224,29 @@ document.addEventListener("DOMContentLoaded", async () => {
                 micTranscriptContent.scrollTop = micTranscriptContent.scrollHeight;
             }
 
-            if (finalTranscript) {
-                beepedSessionKeys.clear();
+            // Prune old entries from cooldown map (> 10 seconds old)
+            for (let [k, timestamp] of wordBeepCooldownMap.entries()) {
+                if (nowMs - timestamp > 10000) {
+                    wordBeepCooldownMap.delete(k);
+                }
             }
         };
 
         speechRecognition.onerror = (err) => {
             console.warn("Speech recognition note/error:", err);
+            if (micActive && err.error !== "aborted" && err.error !== "not-allowed") {
+                setTimeout(() => {
+                    try { speechRecognition.start(); } catch (e) {}
+                }, 300);
+            }
         };
 
         speechRecognition.onend = () => {
             if (micActive) {
-                // Auto restart continuous listening if mic toggle is active
-                try { speechRecognition.start(); } catch (e) {}
+                // Auto restart continuous listening immediately
+                setTimeout(() => {
+                    try { speechRecognition.start(); } catch (e) {}
+                }, 200);
             }
         };
 
