@@ -34,6 +34,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const statusText         = document.getElementById("statusText");
     const btnToggleProtection = document.getElementById("btnToggleProtection");
     const btnStartRealScreen  = document.getElementById("btnStartRealScreen");
+    if (btnStartRealScreen && btnStartRealScreen.querySelector("span")) {
+        btnStartRealScreen.querySelector("span").textContent = "Scan My Screen";
+    }
     const liveModeBadge      = document.getElementById("liveModeBadge");
     const liveModeBadgeText  = document.getElementById("liveModeBadgeText");
     const chipNSFW           = document.getElementById("chipNSFW");
