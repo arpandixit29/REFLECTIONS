@@ -265,19 +265,56 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
+    // Mobile Camera Switcher State
+    let currentFacingMode = "user"; // "user" = front, "environment" = back/rear camera
+
+    async function toggleCameraFacing() {
+        currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+        console.log(`[SafeScreen] Switched camera facing mode to: ${currentFacingMode}`);
+
+        const btnSwitchCamText = document.getElementById("btnSwitchCamText");
+        const viewportCamText = document.getElementById("viewportCamText");
+        const labelText = currentFacingMode === "user" ? "Switch to Back Cam" : "Switch to Front Cam";
+
+        if (btnSwitchCamText) btnSwitchCamText.textContent = labelText;
+        if (viewportCamText) viewportCamText.textContent = currentFacingMode === "user" ? "Back Cam" : "Front Cam";
+        if (window.lucide) lucide.createIcons();
+
+        await startWebcam();
+    }
+
+    const btnSwitchCamera = document.getElementById("btnSwitchCamera");
+    const btnSwitchCameraViewport = document.getElementById("btnSwitchCameraViewport");
+    if (btnSwitchCamera) btnSwitchCamera.addEventListener("click", toggleCameraFacing);
+    if (btnSwitchCameraViewport) btnSwitchCameraViewport.addEventListener("click", toggleCameraFacing);
+
     async function startWebcam() {
         await releaseCameraHardware();
         try {
-            activeMediaStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: "user" },
+            const constraints = {
+                video: {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    facingMode: currentFacingMode
+                },
                 audio: false
-            });
+            };
+
+            try {
+                activeMediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (_err) {
+                // Fallback: try default facingMode if specific facingMode fails
+                activeMediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+            }
+
             webcamVideo.srcObject = activeMediaStream;
             webcamVideo.style.display = "block";
             await webcamVideo.play();
-            liveModeBadgeText.textContent = "Camera Active";
-            streamStatusText.textContent = "Camera Live ✓";
-            activeAppTitle.textContent = "Real-Time AI Camera Protection (Clean View)";
+
+            const camName = currentFacingMode === "user" ? "Front Cam" : "Back Cam";
+            liveModeBadgeText.textContent = camName;
+            streamStatusText.textContent = `Camera Live (${camName}) ✓`;
+            activeAppTitle.textContent = `Real-Time AI Camera Protection (${camName})`;
             btnStartRealScreen.classList.remove("active");
             btnStartRealScreen.querySelector("span").textContent = "Scan My WhatsApp / Screen";
             if (btnReleaseCam) {
@@ -288,7 +325,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             startLoop();
         } catch (err) {
             console.warn("[SafeScreen] Camera error:", err);
-            streamStatusText.textContent = "Camera blocked";
+            streamStatusText.textContent = "Camera blocked / unavailable";
         }
     }
 

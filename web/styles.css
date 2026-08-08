@@ -2032,3 +2032,118 @@ input:checked + .slider:before {
     height: 14px;
 }
 
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE DESIGN SYSTEM
+   ========================================================================== */
+
+@media (max-width: 900px) {
+    .app-container {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .brand {
+        justify-content: space-between;
+    }
+
+    .nav-menu {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        gap: 8px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .nav-item {
+        white-space: nowrap;
+        padding: 8px 14px;
+        font-size: 13px;
+    }
+
+    .sidebar-footer {
+        display: none;
+    }
+
+    .main-content {
+        padding: 16px;
+    }
+
+    .top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .header-actions {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .btn-live-screen, .btn-toggle-protection {
+        flex: 1;
+        min-width: 130px;
+        justify-content: center;
+        padding: 10px 12px;
+        font-size: 12px;
+    }
+
+    .settings-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .screen-viewport {
+        min-height: 300px;
+        max-height: 55vh;
+    }
+}
+
+@media (max-width: 520px) {
+    .brand-text h1 {
+        font-size: 18px;
+    }
+
+    .header-info h2 {
+        font-size: 18px;
+    }
+
+    .header-info p {
+        font-size: 12px;
+    }
+
+    .header-actions {
+        flex-direction: column;
+    }
+
+    .btn-live-screen, .btn-toggle-protection {
+        width: 100%;
+    }
+
+    .viewport-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .card-title-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .word-input-group {
+        flex-direction: column;
+    }
+
+    .btn-add-word {
+        justify-content: center;
+    }
+}
+

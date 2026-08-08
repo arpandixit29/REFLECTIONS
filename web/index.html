@@ -82,6 +82,9 @@
                     <p>Uses real AI models running locally. Your face is always safe — only bad content gets blurred.</p>
                 </div>
                 <div class="header-actions">
+                    <button class="btn-live-screen" id="btnSwitchCamera" title="Switch between Front and Back Camera">
+                        <i data-lucide="refresh-cw"></i> <span id="btnSwitchCamText">Switch to Back Cam</span>
+                    </button>
                     <button class="btn-live-screen" id="btnStartRealScreen">
                         <i data-lucide="cast"></i> <span>Scan My WhatsApp / Screen</span>
                     </button>
@@ -102,7 +105,10 @@
                                 <span class="dot green"></span>
                                 <span class="window-title" id="activeAppTitle">Loading AI models — please wait...</span>
                             </div>
-                            <div style="display: flex; gap: 8px; align-items: center;">
+                            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                                <button id="btnSwitchCameraViewport" style="background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                    <i data-lucide="refresh-cw" style="width:14px; height:14px;"></i> <span id="viewportCamText">Flip Camera</span>
+                                </button>
                                 <button id="btnToggleFullscreen" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
                                     <i data-lucide="maximize-2" style="width:14px; height:14px;"></i> <span>Full Screen View</span>
                                 </button>
