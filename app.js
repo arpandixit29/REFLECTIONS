@@ -341,23 +341,48 @@ document.addEventListener("DOMContentLoaded", async () => {
         await releaseCameraHardware();
 
         try {
-            // 2. Start screen capture (captures WhatsApp video call window)
-            activeMediaStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    cursor: "always"
-                },
-                audio: false
-            });
+            // 2. Start screen capture + system/caller audio (captures WhatsApp video call screen AND caller sound)
+            try {
+                activeMediaStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        suppressLocalAudioPlayback: false
+                    }
+                });
+            } catch (_err) {
+                // Fallback display media constraints
+                activeMediaStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { cursor: "always" },
+                    audio: true
+                });
+            }
 
             webcamVideo.srcObject = activeMediaStream;
             webcamVideo.style.display = "block";
             await webcamVideo.play();
 
+            // Connect incoming WhatsApp caller audio to visualizer if audio track is present
+            const audioTracks = activeMediaStream.getAudioTracks();
+            if (audioTracks.length > 0) {
+                console.log("[SafeScreen] ✓ WhatsApp Caller Audio Stream Captured:", audioTracks[0].label);
+                connectStreamToAudioVisualizer(activeMediaStream);
+            }
+
+            // Also ensure live speech safeguard is listening
+            if (!micActive && SpeechRec) {
+                try {
+                    initSpeechRecognition();
+                    if (speechRecognition) speechRecognition.start();
+                } catch (e) {}
+            }
+
             btnStartRealScreen.classList.add("active");
             btnStartRealScreen.querySelector("span").textContent = "Stop Screen Scan";
-            activeAppTitle.textContent = "🛡 WhatsApp & Video Call Shield Active — Scanning Stream Live";
-            liveModeBadgeText.textContent = "Screen Shield Active";
-            streamStatusText.textContent = "Screen Scan Live ✓";
+            activeAppTitle.textContent = "🛡 WhatsApp & Video Call Shield Active — Scanning Video & Caller Audio Live";
+            liveModeBadgeText.textContent = "Screen & Call Shield Active";
+            streamStatusText.textContent = "Screen & Caller Audio Live ✓";
             if (window.lucide) lucide.createIcons();
 
             activeMediaStream.getVideoTracks()[0].onended = async () => {
@@ -1174,13 +1199,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const now = new Date();
             const timeStr = now.toTimeString().split(" ")[0] + "." + String(now.getMilliseconds()).padStart(3, "0");
 
+            const hasCallAudio = activeMediaStream && activeMediaStream.getAudioTracks().length > 0;
+            const audioSourceTag = hasCallAudio ? "WhatsApp Call Stream" : "Live Microphone";
+
             words.forEach((w, wIdx) => {
                 if (isProfaneToken(w)) {
                     const wordKey = `${event.resultIndex}_${wIdx}_${w.toLowerCase()}`;
                     if (!beepedSessionKeys.has(wordKey)) {
                         beepedSessionKeys.add(wordKey);
                         triggerCensorBeep(550);
-                        addTimestampLogEntry(timeStr, "Live Microphone", w, "Abusive Speech", "BEEP_OVERLAY");
+                        addTimestampLogEntry(timeStr, audioSourceTag, w, "Abusive Speech", "BEEP_OVERLAY");
                     }
                     cleanedWords.push(`<span class="word-flagged-beep">[BEEP: ${w.toUpperCase()}]</span>`);
                 } else {
