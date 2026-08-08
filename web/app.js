@@ -1027,15 +1027,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         return false;
     }
 
-    // Render initial banned words tags
+    // User Custom Banned Words set
+    const customBannedWordsSet = new Set();
+
+    // Render user-added custom banned words tags
     function renderBannedWordTags() {
         if (!bannedWordsTags) return;
         bannedWordsTags.innerHTML = "";
-        profanitySet.forEach(word => {
+
+        if (customBannedWordsSet.size === 0) {
+            bannedWordsTags.innerHTML = `<span style="color: var(--text-muted); font-size: 13px; font-style: italic;">No custom words added yet. Built-in dictionary of 1,400+ abusive words is active automatically in the background.</span>`;
+            return;
+        }
+
+        customBannedWordsSet.forEach(word => {
             const tag = document.createElement("span");
             tag.className = "word-tag";
-            tag.innerHTML = `<span>${word}</span> <i data-lucide="x" class="btn-remove-word"></i>`;
+            tag.innerHTML = `<span>${word}</span> <i data-lucide="x" class="btn-remove-word" style="cursor:pointer; margin-left: 6px;"></i>`;
             tag.querySelector(".btn-remove-word").addEventListener("click", () => {
+                customBannedWordsSet.delete(word);
                 profanitySet.delete(word);
                 renderBannedWordTags();
             });
@@ -1049,6 +1059,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         btnAddCustomWord.addEventListener("click", () => {
             const word = inputCustomWord.value.trim().toLowerCase();
             if (word) {
+                customBannedWordsSet.add(word);
                 profanitySet.add(word);
                 inputCustomWord.value = "";
                 renderBannedWordTags();
