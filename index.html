@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reflections - Real-Time Protection</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- ============================================================
+         REAL AI MODELS (all run 100% in your browser, no server)
+         ============================================================ -->
+    <!-- 1. TensorFlow.js v4 runtime (required by NSFWJS) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <!-- 2. NSFWJS v2 — Yahoo's pre-trained NSFW classifier neural network -->
+    <script src="https://cdn.jsdelivr.net/npm/nsfwjs@2.4.2/dist/nsfwjs.min.js"></script>
+    <!-- 3. COCO-SSD — TensorFlow.js object detector (knives, scissors, weapons, 80 classes) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+    <!-- 4. MediaPipe Tasks Vision — Google's modern hand landmark detector -->
+    <!-- Loaded as ES module in app.js -->
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <i data-lucide="shield-check"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>Reflections</h1>
+                    <span class="tagline">AI PROTECTION</span>
+                </div>
+            </div>
+
+            <div class="status-badge" id="globalStatusBadge">
+                <span class="pulse-dot"></span>
+                <span class="status-text" id="statusText">LOADING AI MODELS...</span>
+            </div>
+
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="simulator">
+                    <i data-lucide="camera"></i> Real Camera Protection
+                </button>
+                <button class="nav-item" data-tab="telemetry">
+                    <i data-lucide="zap"></i> Protection Speed
+                </button>
+                <button class="nav-item" data-tab="modes">
+                    <i data-lucide="shield"></i> Safety Modes
+                </button>
+                <button class="nav-item" data-tab="apps">
+                    <i data-lucide="smartphone"></i> App Protection
+                </button>
+                <button class="nav-item" data-tab="audio">
+                    <i data-lucide="volume-x"></i> Audio & Mic Safety
+                </button>
+                <button class="nav-item" data-tab="privacy">
+                    <i data-lucide="lock"></i> Privacy Guarantee
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="privacy-box">
+                    <i data-lucide="wifi-off"></i>
+                    <div>
+                        <strong>100% Offline & Private</strong>
+                        <span>AI runs locally in your browser</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <header class="top-bar">
+                <div class="header-info">
+                    <h2>Reflections AI Protection</h2>
+                    <p>Uses real AI models running locally. Your face is always safe — only bad content gets blurred.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn-live-screen" id="btnReleaseCam" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444;">
+                        <i data-lucide="video-off"></i> <span>Free Camera for WhatsApp Call</span>
+                    </button>
+                    <button class="btn-live-screen" id="btnStartRealScreen">
+                        <i data-lucide="cast"></i> <span>Scan My WhatsApp / Screen</span>
+                    </button>
+                    <button class="btn-toggle-protection active" id="btnToggleProtection">
+                        <i data-lucide="power"></i> <span>Protection Active</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- TAB 1: REAL CAMERA PROTECTION -->
+            <section class="tab-pane active" id="tab-simulator">
+                <div class="simulator-grid-full">
+                    <div class="viewport-card full-width-card">
+                        <div class="viewport-header">
+                            <div class="window-controls">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                                <span class="window-title" id="activeAppTitle">Loading AI models — please wait...</span>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button id="btnToggleFullscreen" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                                    <i data-lucide="maximize-2" style="width:14px; height:14px;"></i> <span>Full Screen View</span>
+                                </button>
+                                <div class="badge-npu" id="liveModeBadge">
+                                    <i data-lucide="cpu"></i> <span id="liveModeBadgeText">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="screen-viewport full-viewport" id="screenViewport">
+                            <video id="webcamVideo" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; display:block;"></video>
+
+                            <!-- Frosted glass blur overlay — ONLY shown when real AI detects bad content -->
+                            <div class="targeted-blur-box" id="targetedBlurBox">
+                                <div class="blur-box-tag">
+                                    <i data-lucide="shield-alert"></i> <span id="blurBoxText">Content Blurred</span>
+                                </div>
+                            </div>
+
+                            <!-- Warning toast that slides in when bad content is detected -->
+                            <div class="warning-toast" id="warningToast">
+                                <div class="warning-toast-icon">
+                                    <i data-lucide="alert-triangle"></i>
+                                </div>
+                                <div class="warning-toast-content">
+                                    <strong id="warningTitle">Harmful Content Detected</strong>
+                                    <p id="warningMessage">This content has been automatically blurred for your safety.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="viewport-footer">
+                            <div class="footer-bar-content">
+                                <div class="detector-indicators">
+                                    <span class="indicator-chip" id="chipNSFW">NSFWJS: <strong id="nsfwScoreText">Loading...</strong></span>
+                                    <span class="indicator-chip" id="chipWound" style="border-color: rgba(239, 68, 68, 0.4); background: rgba(239, 68, 68, 0.1);">Wound AI: <strong id="woundScoreText">Active ✓</strong></span>
+                                    <span class="indicator-chip" id="chipObjects">Objects: <strong id="objectsScoreText">Loading...</strong></span>
+                                    <span class="indicator-chip" id="chipHands">Hands AI: <strong id="handsScoreText">Loading...</strong></span>
+                                    <span class="indicator-chip" id="chipStream">Stream: <strong id="streamStatusText">Starting...</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: PROTECTION SPEED -->
+            <section class="tab-pane" id="tab-telemetry">
+                <div class="telemetry-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="zap"></i></div>
+                        <div class="metric-data">
+                            <span class="label">AI Scan Speed</span>
+                            <h3 id="telLatency">-- ms</h3>
+                            <span class="subtext">NSFWJS inference time per frame</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon green"><i data-lucide="play"></i></div>
+                        <div class="metric-data">
+                            <span class="label">Video Smoothness</span>
+                            <h3 id="telFPS">-- FPS</h3>
+                            <span class="subtext">Live camera stream rate</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon purple"><i data-lucide="cpu"></i></div>
+                        <div class="metric-data">
+                            <span class="label">AI Models Loaded</span>
+                            <h3 id="telNPULoad">Loading...</h3>
+                            <span class="subtext">NSFWJS + Hand Landmark AI</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon amber"><i data-lucide="hard-drive"></i></div>
+                        <div class="metric-data">
+                            <span class="label">Memory Usage</span>
+                            <h3 id="telRAM">-- MB</h3>
+                            <span class="subtext">Browser memory footprint</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: SAFETY MODES -->
+            <section class="tab-pane" id="tab-modes">
+                <div class="modes-grid">
+                    <div class="mode-card" id="cardChildMode">
+                        <div class="mode-header">
+                            <div class="mode-icon child"><i data-lucide="baby"></i></div>
+                            <div class="mode-title">
+                                <h3>Child Safety Profile</h3>
+                                <span>Keeps kids safe automatically</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleChildMode">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="mode-desc">Automatically blurs adult images and violent scenes. Protected by parental 4-digit PIN lock.</p>
+                        <div class="mode-status-line" id="childModeStatus"><i data-lucide="lock"></i> PIN Lock Ready</div>
+                    </div>
+                    <div class="mode-card active" id="cardWomensMode">
+                        <div class="mode-header">
+                            <div class="mode-icon womens"><i data-lucide="user-check"></i></div>
+                            <div class="mode-title">
+                                <h3>Women's Protection Profile</h3>
+                                <span>Anti-harassment defense</span>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="toggleWomensMode" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <p class="mode-desc">Detects middle fingers, explicit nudity, and deepfakes on video calls and screen.</p>
+                        <div class="mode-status-line active"><i data-lucide="shield-check"></i> Active Protection</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: APP FILTERS -->
+            <section class="tab-pane" id="tab-apps">
+                <div class="app-filters-card">
+                    <h3><i data-lucide="smartphone"></i> System-Wide App Protection</h3>
+                    <div class="apps-grid">
+                        <div class="app-toggle-card">
+                            <div class="app-icon whatsapp"><i data-lucide="message-circle"></i></div>
+                            <div class="app-info"><strong>WhatsApp & Calls</strong><span>Blurs bad content in chats</span></div>
+                            <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+                        </div>
+                        <div class="app-toggle-card">
+                            <div class="app-icon instagram"><i data-lucide="instagram"></i></div>
+                            <div class="app-info"><strong>Instagram</strong><span>Deepfake & content filter</span></div>
+                            <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+                        </div>
+                        <div class="app-toggle-card">
+                            <div class="app-icon chrome"><i data-lucide="globe"></i></div>
+                            <div class="app-info"><strong>Web Browsers</strong><span>Block explicit images</span></div>
+                            <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+                        </div>
+                        <div class="app-toggle-card">
+                            <div class="app-icon gallery"><i data-lucide="image"></i></div>
+                            <div class="app-info"><strong>Photo Gallery</strong><span>Scan saved photos</span></div>
+                            <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+                        </div>
+                        <div class="app-toggle-card">
+                            <div class="app-icon camera"><i data-lucide="camera"></i></div>
+                            <div class="app-info"><strong>Live Camera</strong><span>Real-time viewfinder blur</span></div>
+                            <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+                        </div>
+                        <div class="app-toggle-card">
+                            <div class="app-icon telegram"><i data-lucide="send"></i></div>
+                            <div class="app-info"><strong>Telegram</strong><span>Message content filter</span></div>
+                            <label class="switch"><input type="checkbox" checked><span class="slider round"></span></label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: PRIVACY -->
+            <section class="tab-pane" id="tab-privacy">
+                <div class="privacy-audit-card">
+                    <div class="audit-header">
+                        <i data-lucide="shield-check" class="shield-green"></i>
+                        <div>
+                            <h2>100% Private & Local</h2>
+                            <p>All video processing runs on your device locally. Nothing is uploaded anywhere.</p>
+                        </div>
+                    </div>
+                    <div class="audit-metrics">
+                        <div class="audit-row"><span>Internet Needed?</span><strong class="badge-tag green">NO (100% Offline after model load)</strong></div>
+                        <div class="audit-row"><span>Are camera frames uploaded?</span><strong class="badge-tag green">NEVER (0 Bytes Uploaded)</strong></div>
+                        <div class="audit-row"><span>Where is AI scanning done?</span><strong class="badge-tag blue">Inside Your Device</strong></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 6: AUDIO & MIC SAFETY -->
+            <section class="tab-pane" id="tab-audio">
+                <div class="audio-safety-container">
+                    <div class="section-header-box">
+                        <div>
+                            <h2><i data-lucide="volume-x"></i> Audio & Speech Profanity Beep Redactor</h2>
+                            <p>Real-time speech recognition, profanity detection, exact timestamping, and censor beep audio replacement.</p>
+                        </div>
+                        <div class="audio-stats-chips">
+                            <span class="chip-stat" id="statTotalBeeps"><i data-lucide="bell-off"></i> Total Beeps: <strong>0</strong></span>
+                            <span class="chip-stat" id="statMicState"><i data-lucide="mic"></i> Mic: <strong>OFF</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="audio-grid" style="grid-template-columns: 1fr;">
+                        <!-- Panel 1: Live Microphone Real-Time Profanity Safeguard & Beep Generator -->
+                        <div class="audio-card mic-panel" style="width: 100%;">
+                            <div class="card-title-bar">
+                                <div class="title-with-icon">
+                                    <i data-lucide="mic" class="icon-pulse"></i>
+                                    <div>
+                                        <h3>Live Microphone Abusive Word Safeguard</h3>
+                                        <span>Real-time speech recognition & instant 1000 Hz censor beep sound generator</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn-mic-toggle" id="btnToggleMic">
+                                        <i data-lucide="mic"></i> <span>Start Mic Safeguard</span>
+                                    </button>
+                                    <button class="btn-secondary-action" id="btnTestSimulateBeep" style="margin: 0;">
+                                        <i data-lucide="volume-2"></i> <span>Test Beep & Speech</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mic-status-box" id="micStatusBox">
+                                <span class="mic-indicator-dot"></span>
+                                <span id="micStatusText">Click "Start Mic Safeguard" to enable live speech listening with automatic censor beeps</span>
+                            </div>
+
+                            <div class="transcript-box">
+                                <div class="transcript-header">
+                                    <span><i data-lucide="file-text"></i> Live Speech Transcript (Auto-Sanitized with Beeps)</span>
+                                    <span class="listening-tag" id="listeningTag">READY</span>
+                                </div>
+                                <div class="transcript-content" id="micTranscriptContent">
+                                    <em>Speak into your microphone in English or Hindi. Any abusive or profane word detected will immediately play a 1000 Hz censor beep sound and be replaced by [BEEP: WORD] in real-time...</em>
+                                </div>
+                            </div>
+
+                            <div class="audio-visualizer-box">
+                                <span class="viz-label">Audio Input Waveform</span>
+                                <div class="waveform-bars" id="waveformBars">
+                                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                    <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Timestamps Log Table -->
+                    <div class="timestamps-card">
+                        <div class="card-title-bar">
+                            <div class="title-with-icon">
+                                <i data-lucide="clock" class="icon-amber"></i>
+                                <div>
+                                    <h3>Flagged Profanity Timestamps Log</h3>
+                                    <span>Exact timing and beep replacement history</span>
+                                </div>
+                            </div>
+                            <button class="btn-sm-clear" id="btnClearLog"><i data-lucide="trash-2"></i> Clear Log</button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="timestamps-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp Interval</th>
+                                        <th>Source</th>
+                                        <th>Flagged Word</th>
+                                        <th>Category</th>
+                                        <th>Action Applied</th>
+                                        <th>Beep Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="timestampsTableBody">
+                                    <tr class="empty-row">
+                                        <td colspan="6">No profanity detected yet. Speak into mic or click "Test Beep & Speech" to begin.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Audio Beep Settings & Custom Word Dictionary -->
+                    <div class="audio-settings-card">
+                        <div class="card-title-bar">
+                            <div class="title-with-icon">
+                                <i data-lucide="sliders" class="icon-blue"></i>
+                                <div>
+                                    <h3>Profanity Detection & Beep Configuration</h3>
+                                    <span>Customize censor frequency, volume, and banned words list</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-grid">
+                            <div class="setting-item">
+                                <label><i data-lucide="activity"></i> Beep Tone Frequency (Hz)</label>
+                                <select id="selectBeepFreq" class="form-select">
+                                    <option value="1000" selected>1000 Hz (Standard Television Censor Beep)</option>
+                                    <option value="800">800 Hz (Low Pitch)</option>
+                                    <option value="1200">1200 Hz (High Pitch)</option>
+                                    <option value="500">500 Hz (Deep Buzz)</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <label><i data-lucide="volume-2"></i> Beep Volume</label>
+                                <input type="range" id="sliderBeepVol" min="0.1" max="1.0" step="0.1" value="0.8">
+                                <span class="range-val" id="valBeepVol">80%</span>
+                            </div>
+                            <div class="setting-item full-width-setting">
+                                <label><i data-lucide="shield-alert"></i> Custom Banned Words Dictionary</label>
+                                <div class="word-input-group">
+                                    <input type="text" id="inputCustomWord" placeholder="Add custom profane word to censor (e.g. stupid, idiot...)" class="form-input">
+                                    <button id="btnAddCustomWord" class="btn-add-word"><i data-lucide="plus"></i> Add Word</button>
+                                </div>
+                                <div class="banned-words-tags" id="bannedWordsTags">
+                                    <!-- Dynamic word tags -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Parental PIN Modal -->
+    <div class="modal-backdrop" id="modalPin">
+        <div class="modal-card">
+            <h3><i data-lucide="lock"></i> Parent PIN Password</h3>
+            <p>Enter your 4-digit PIN to change child safety settings.</p>
+            <input type="password" maxlength="4" placeholder="1234" id="inputPin" class="pin-input">
+            <div class="modal-actions">
+                <button class="btn-cancel" id="btnCancelPin">Cancel</button>
+                <button class="btn-confirm" id="btnConfirmPin">Unlock</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- app.js is loaded as type="module" so we can import MediaPipe Tasks Vision -->
+    <script type="module" src="app.js"></script>
+    <script>lucide.createIcons();</script>
+</body>
+</html>
